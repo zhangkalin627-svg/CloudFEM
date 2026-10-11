@@ -4,11 +4,11 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.2.** 2D triangular P1 finite elements, steady/transient
-> heat conduction, time-harmonic eddy currents (planar + axisymmetric),
-> sequential EM-thermal (induction heating) coupling with
-> temperature-dependent conductivity. Validated against analytical
-> solutions. Roadmap below.
+> **Status: v0.3.** 2D triangular P1 finite elements (structured +
+> unstructured Delaunay meshes), steady/transient heat conduction,
+> time-harmonic eddy currents (planar + axisymmetric), sequential
+> EM-thermal (induction heating) coupling with temperature-dependent
+> conductivity. Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
 
@@ -40,8 +40,9 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | Planar induction heating energy balance | `∫ρcₚΔT = P·t` | 0.00 % error |
 | **v0.2** Axisymmetric cylinder in axial AC field | Bessel `H₀·J₀(αr)/J₀(αa)` | L2 ≈ 4e-3 |
 | **v0.2** Axisymmetric heat convergence | Theory: P1 → O(h²) | measured 2.05 / 2.05 |
+| **v0.3** Disk heat convergence (unstructured) | Analytical `Q/4k·(R²−r²)` | measured 2.01 / 2.09, qmin > 0.5 |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py`
 
 ## Layout
 
@@ -61,7 +62,7 @@ docs/          roadmap
 ## Roadmap
 
 - [x] v0.2: Axisymmetric EM (ũ=rAφ) + heat, Neumann BCs, σ(T) coupling
-- [ ] Unstructured Delaunay meshing of arbitrary polygons (CAD import: DXF/STEP)
+- [x] v0.3: Unstructured Delaunay meshing (arbitrary polygons, disks)
 - [ ] Nonlinear B–H curve (magnetostatics with saturation)
 - [ ] Linear elasticity / thermal stress
 - [ ] Web UI: geometry sketch → mesh → solve → plots in the browser

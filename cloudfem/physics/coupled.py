@@ -8,7 +8,7 @@ Material properties are taken as temperature-independent in this MVP
 import numpy as np
 
 from ..fem.timestep import (
-    implicit_euler_heat, source_load_vector, element_to_nodal)
+    implicit_euler_heat, source_load_vector_elem, element_to_nodal)
 from .em import solve_eddy_current, joule_heating_density, total_joule_power, MU0
 
 
@@ -25,10 +25,11 @@ def induction_heating(mesh, sigma, omega, J_s=0.0, nu=None,
     A = solve_eddy_current(mesh, nu=nu, sigma=sigma, omega=omega,
                            J_s=J_s, bc=bc_em)
     Q_elem, _ = joule_heating_density(mesh, A, sigma, omega)
-    Q_nodal = element_to_nodal(mesh, Q_elem)
+    Q_nodal = element_to_nodal(mesh, Q_elem)  # for output/plots only
     P_total = total_joule_power(mesh, A, sigma, omega, depth=depth)
 
-    rhs_q = source_load_vector(mesh, Q_nodal)
+    # element-wise source: no leakage of Q into neighbouring materials
+    rhs_q = source_load_vector_elem(mesh, Q_elem)
     times, T_hist = implicit_euler_heat(
         mesh, k_th, rho_cp, rhs_q, bc_th, t_end, dt, T0)
 

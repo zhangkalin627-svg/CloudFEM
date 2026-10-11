@@ -22,9 +22,8 @@ import matplotlib.pyplot as plt
 from cloudfem.mesh.tri_mesh import rect_mesh
 from cloudfem.physics.axisym import (
     solve_eddy_current_axi, joule_heating_density_axi,
-    total_joule_power_axi, transient_heat_axi, MU0, TWO_PI,
-    source_load_vector_axi)
-from cloudfem.fem.timestep import element_to_nodal
+    total_joule_power_axi, transient_heat_axi, MU0, TWO_PI)
+from cloudfem.fem.timestep import element_to_nodal, source_load_vector_elem
 from cloudfem.physics.em import skin_depth
 
 FREQ = 10e3
@@ -93,8 +92,9 @@ def main():
         Q_elem, _ = joule_heating_density_axi(mesh, u, sigma_call, OMEGA)
         P = total_joule_power_axi(mesh, u, sigma_call, OMEGA)
         P_hist.append(P)
-        Q_nodal = element_to_nodal(mesh, Q_elem)
-        rhs_q = source_load_vector_axi(mesh, Q_nodal)
+        # element-wise source -> no leakage into neighbouring materials
+        rhs_q = source_load_vector_elem(
+            mesh, Q_elem, weight=lambda r: TWO_PI * r)
 
         _, hist = implicit_euler_heat(mesh, k_axi, rc_axi, rhs_q,
                                       None, dt, dt, T)

@@ -7,11 +7,27 @@ import scipy.sparse.linalg as spla
 from .poisson import assemble, _gradients
 
 
-def mass_matrix(mesh, rho_cp=1.0):
-    """Consistent P1 mass matrix scaled by rho_cp (float or callable)."""
+def mass_matrix(mesh, rho_cp=1.0, lumped=True):
+    """P1 mass matrix scaled by rho_cp (float or callable).
+
+    lumped=True (default): diagonal row-sum lumping. This guarantees the
+    discrete maximum principle for transient heat conduction and avoids
+    overshoot at sharp source/material interfaces. Set lumped=False for
+    the consistent matrix.
+    """
     n = mesh.n_nodes
-    rows, cols, data = [], [], []
     rc_fn = rho_cp if callable(rho_cp) else lambda x, y: rho_cp
+    if lumped:
+        diag = np.zeros(n)
+        for el in mesh.elements:
+            p = mesh.nodes[el]
+            _, _, area = _gradients(p)
+            xc, yc = p[:, 0].mean(), p[:, 1].mean()
+            w = rc_fn(xc, yc) * area / 3.0
+            for i in el:
+                diag[i] += w
+        return sp.diags(diag, format="csr")
+    rows, cols, data = [], [], []
     for el in mesh.elements:
         p = mesh.nodes[el]
         _, _, area = _gradients(p)
@@ -93,6 +109,28 @@ def source_load_vector(mesh, q_nodal):
         qe = q_nodal[el].mean()
         for i in el:
             rhs[i] += qe * area / 3.0
+    return rhs
+
+
+def source_load_vector_elem(mesh, q_elem, weight=None):
+    """Consistent load vector from an *element* source field.
+
+    rhs_i = sum_e q_elem[e] * weight(rc) * area_e / 3 over elements
+    containing node i. Using the element field directly (instead of
+    nodal averaging) keeps sharp source discontinuities from leaking
+    into neighbouring materials. weight defaults to 1; pass
+    ``lambda r: 2*pi*r`` for axisymmetric models.
+    """
+    n = mesh.n_nodes
+    rhs = np.zeros(n)
+    w_fn = weight if weight is not None else (lambda r: 1.0)
+    for e, el in enumerate(mesh.elements):
+        p = mesh.nodes[el]
+        _, _, area = _gradients(p)
+        rc = p[:, 0].mean()
+        w = w_fn(rc) * area / 3.0 * q_elem[e]
+        for i in el:
+            rhs[i] += w
     return rhs
 
 

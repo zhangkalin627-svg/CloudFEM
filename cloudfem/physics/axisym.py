@@ -25,7 +25,6 @@ import numpy as np
 
 from ..fem.poisson import solve_poisson, _gradients
 from ..fem.timestep import implicit_euler_heat, mass_matrix
-from ..fem.timestep import source_load_vector as _source_load_vector
 from .em import MU0
 
 TWO_PI = 2.0 * np.pi
@@ -103,21 +102,6 @@ def flux_density_axi(mesh, utilde):
     return B
 
 
-def source_load_vector_axi(mesh, q_nodal):
-    """Consistent load vector with 2*pi*r weight from a nodal source field."""
-    n = mesh.n_nodes
-    rhs = np.zeros(n)
-    for el in mesh.elements:
-        p = mesh.nodes[el]
-        _, _, area = _gradients(p)
-        rc = p[:, 0].mean()
-        qe = q_nodal[el].mean()
-        w = TWO_PI * rc * area / 3.0
-        for i in el:
-            rhs[i] += qe * w
-    return rhs
-
-
 def transient_heat_axi(mesh, k=1.0, rho_cp=1.0, Q=0.0, bc=None,
                        t_end=1.0, dt=0.01, T0=0.0):
     """Axisymmetric transient heat conduction (implicit Euler).
@@ -129,7 +113,10 @@ def transient_heat_axi(mesh, k=1.0, rho_cp=1.0, Q=0.0, bc=None,
     rc_axi = lambda x, y: TWO_PI * x * rc_f(x, y)        # noqa: E731
 
     if isinstance(Q, np.ndarray):
-        rhs_q = source_load_vector_axi(mesh, Q)
+        # nodal array -> distribute via element means (mild smoothing);
+        # for sharp interfaces prefer source_load_vector_elem instead.
+        from ..fem.timestep import source_load_vector
+        rhs_q = source_load_vector(mesh, Q)
     else:
         q_f = _as_fn(Q)
 

@@ -28,7 +28,7 @@ def _gradients(p):
     return b, c, abs(area)
 
 
-def assemble(mesh, k=1.0, c=0.0, f=0.0, dtype=float):
+def assemble(mesh, k=1.0, c=0.0, f=0.0, dtype=float, neumann=None):
     """Assemble stiffness matrix A and load vector rhs.
 
     Parameters
@@ -38,6 +38,10 @@ def assemble(mesh, k=1.0, c=0.0, f=0.0, dtype=float):
     c : float or callable, reaction coefficient.
     f : float or callable(x, y), source term.
     dtype : float or complex.
+    neumann : dict {boundary name: g} for Neumann BCs, adding
+        int_Gamma g*v ds to the load vector. g is the *fully weighted*
+        boundary integrand factor (e.g. heat flux k*dT/dn in planar
+        problems), float or callable(x, y).
 
     Returns
     -------
@@ -75,6 +79,21 @@ def assemble(mesh, k=1.0, c=0.0, f=0.0, dtype=float):
                 data.append(ae[i, j])
 
     A = sp.coo_matrix((data, (rows, cols)), shape=(n, n), dtype=dtype).tocsr()
+
+    if neumann:
+        bedges = mesh.boundary_edges()
+        for name, g in neumann.items():
+            g_fn = g if callable(g) else (lambda x, y, g=g: g)
+            ids = set(int(i) for i in mesh.boundaries[name])
+            for i, j in bedges:
+                if i in ids and j in ids:
+                    pi, pj = mesh.nodes[i], mesh.nodes[j]
+                    length = float(np.linalg.norm(pj - pi))
+                    xm, ym = (pi[0] + pj[0]) / 2.0, (pi[1] + pj[1]) / 2.0
+                    gv = g_fn(xm, ym)
+                    rhs[i] += gv * length / 2.0
+                    rhs[j] += gv * length / 2.0
+
     return A, rhs
 
 
@@ -123,12 +142,13 @@ def apply_dirichlet(A, rhs, mesh, bc):
     return A, rhs
 
 
-def solve_poisson(mesh, k=1.0, c=0.0, f=0.0, bc=None, dtype=float):
+def solve_poisson(mesh, k=1.0, c=0.0, f=0.0, bc=None, dtype=float,
+                  neumann=None):
     """Solve -div(k grad u) + c u = f with Dirichlet BCs.
 
     Returns the nodal solution array u.
     """
-    A, rhs = assemble(mesh, k=k, c=c, f=f, dtype=dtype)
+    A, rhs = assemble(mesh, k=k, c=c, f=f, dtype=dtype, neumann=neumann)
     if bc:
         A, rhs = apply_dirichlet(A, rhs, mesh, bc)
     u = spla.spsolve(A, rhs)

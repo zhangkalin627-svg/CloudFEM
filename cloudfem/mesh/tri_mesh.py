@@ -33,6 +33,15 @@ class TriMesh:
     def n_elements(self):
         return self.elements.shape[0]
 
+    def boundary_edges(self):
+        """Edges belonging to only one triangle. Returns (E, 2) int array."""
+        edges = {}
+        for el in self.elements:
+            for i, j in ((el[0], el[1]), (el[1], el[2]), (el[2], el[0])):
+                key = (i, j) if i < j else (j, i)
+                edges[key] = edges.get(key, 0) + 1
+        return np.array([k for k, v in edges.items() if v == 1], dtype=int)
+
     def element_areas(self):
         """Signed-doubled area helper -> absolute triangle areas, shape (M,)."""
         if self._areas is None:

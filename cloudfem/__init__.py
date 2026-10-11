@@ -1,0 +1,3 @@
+"""CloudFEM: open-source cloud-native multiphysics FEM framework (MVP v0.1)."""
+
+__version__ = "0.1.0"

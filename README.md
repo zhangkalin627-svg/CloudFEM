@@ -4,11 +4,12 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.3.** 2D triangular P1 finite elements (structured +
+> **Status: v0.4.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), steady/transient heat conduction,
 > time-harmonic eddy currents (planar + axisymmetric), sequential
 > EM-thermal (induction heating) coupling with temperature-dependent
-> conductivity. Validated against analytical solutions. Roadmap below.
+> conductivity, and linear elasticity with thermal-stress coupling.
+> Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
 
@@ -41,8 +42,11 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.2** Axisymmetric cylinder in axial AC field | Bessel `H₀·J₀(αr)/J₀(αa)` | L2 ≈ 4e-3 |
 | **v0.2** Axisymmetric heat convergence | Theory: P1 → O(h²) | measured 2.05 / 2.05 |
 | **v0.3** Disk heat convergence (unstructured) | Analytical `Q/4k·(R²−r²)` | measured 2.01 / 2.09, qmin > 0.5 |
+| **v0.4** Constrained block, uniform heating (plane strain) | Analytical `−EαΔT/((1+ν)(1−2ν))` | rel. err 2.6e-16 |
+| **v0.4** Elasticity convergence (manufactured, plane stress) | Theory: P1 → O(h²) | measured 1.94 / 1.97 |
+| **v0.4** Disk thermal stress (plane stress) | Analytical `σ_r, σ_θ` | rel. L2 err 2.6 % |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py`
 
 ## Layout
 
@@ -54,6 +58,8 @@ cloudfem/
     heat.py    steady / transient conduction
     em.py      time-harmonic eddy currents (A-formulation), Joule heating
     coupled.py sequential EM → thermal induction heating
+    elastic.py linear elasticity (plane stress/strain), P1 vector FEM
+    thermomech.py sequential thermal → structural (thermal stress)
 tests/         analytical validations (must stay green)
 examples/      induction_heating.py + output plots
 docs/          roadmap
@@ -63,8 +69,9 @@ docs/          roadmap
 
 - [x] v0.2: Axisymmetric EM (ũ=rAφ) + heat, Neumann BCs, σ(T) coupling
 - [x] v0.3: Unstructured Delaunay meshing (arbitrary polygons, disks)
+- [x] v0.4: Linear elasticity / thermal stress (plane stress+strain,
+      von Mises, sequential EM → thermal → structural chain)
 - [ ] Nonlinear B–H curve (magnetostatics with saturation)
-- [ ] Linear elasticity / thermal stress
 - [ ] Web UI: geometry sketch → mesh → solve → plots in the browser
 - [ ] 3D (tetrahedral) support
 

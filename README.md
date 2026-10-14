@@ -4,11 +4,12 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.4.** 2D triangular P1 finite elements (structured +
+> **Status: v0.5.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), steady/transient heat conduction,
 > time-harmonic eddy currents (planar + axisymmetric), sequential
 > EM-thermal (induction heating) coupling with temperature-dependent
-> conductivity, and linear elasticity with thermal-stress coupling.
+> conductivity, linear elasticity with thermal-stress coupling, and
+> nonlinear magnetostatics with B-H saturation (Picard solver).
 > Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
@@ -45,6 +46,8 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.4** Constrained block, uniform heating (plane strain) | Analytical `−EαΔT/((1+ν)(1−2ν))` | rel. err 2.6e-16 |
 | **v0.4** Elasticity convergence (manufactured, plane stress) | Theory: P1 → O(h²) | measured 1.94 / 1.97 |
 | **v0.4** Disk thermal stress (plane stress) | Analytical `σ_r, σ_θ` | rel. L2 err 2.6 % |
+| **v0.5** Nonlinear magnetostatics, manufactured solution | Theory: P1 → O(h²) | measured 1.96 / 1.98 (Newton, 5 iters) |
+| **v0.5** C-core inductor saturation curve | Linear at low NI, bends at knee | B(30kA·t) = 1.8 % of linear extrapolation |
 
 Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py`
 
@@ -71,7 +74,8 @@ docs/          roadmap
 - [x] v0.3: Unstructured Delaunay meshing (arbitrary polygons, disks)
 - [x] v0.4: Linear elasticity / thermal stress (plane stress+strain,
       von Mises, sequential EM → thermal → structural chain)
-- [ ] Nonlinear B–H curve (magnetostatics with saturation)
+- [x] v0.5: Nonlinear B-H curve (2D magnetostatics with saturation,
+      Newton solver with line search, C-core inductor demo)
 - [ ] Web UI: geometry sketch → mesh → solve → plots in the browser
 - [ ] 3D (tetrahedral) support
 

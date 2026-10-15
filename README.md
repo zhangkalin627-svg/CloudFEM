@@ -4,13 +4,14 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.6.** 2D triangular P1 finite elements (structured +
-> unstructured Delaunay meshes), steady/transient heat conduction,
-> time-harmonic eddy currents (planar + axisymmetric), sequential
-> EM-thermal (induction heating) coupling with temperature-dependent
-> conductivity, linear elasticity with thermal-stress coupling,
-> nonlinear magnetostatics with B-H saturation, and a minimal browser
-> Web UI (draw polygon → mesh → solve steady heat → contour plot).
+> **Status: v0.7.** 2D triangular P1 finite elements (structured +
+> unstructured Delaunay meshes), tetrahedral P1 elements for 3D box
+> domains, steady/transient heat conduction, time-harmonic eddy currents
+> (planar + axisymmetric), sequential EM-thermal (induction heating)
+> coupling with temperature-dependent conductivity, linear elasticity
+> with thermal-stress coupling, nonlinear magnetostatics with B-H
+> saturation, and a minimal browser Web UI (draw polygon → mesh → solve
+> steady heat → contour plot).
 > Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
@@ -51,14 +52,17 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.5** C-core inductor saturation curve | Linear at low NI, bends at knee | B(30kA·t) = 1.8 % of linear extrapolation |
 | **v0.6** Web UI: rectangle vs analytic linear profile | T(x) = T_hot(1−x/L) | rel. L2 err < 2 % |
 | **v0.6** Web UI: L-shape mesh quality + max principle | qmin floor, 0 ≤ T ≤ 100 | qmin > 0.1 (slivers filtered), bounds hold |
+| **v0.7** Tetra P1: affine solution on unit cube (linear exactness) | P1 reproduces affine T exactly | L2 err = 1.4e-15 |
+| **v0.7** Tetra P1: manufactured sin(πx)sin(πy)sin(πz), f = 3π²T | Theory: P1 → O(h²) | measured 1.72 / 1.86 |
+| **v0.7** 3D steel cube, uniform source, 0.1 m | slab bound Q·L²/8k = 25.0 °C | centre rise 11.18 °C < bound |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py`
 
 ## Layout
 
 ```
 cloudfem/
-  mesh/        triangular mesh generation, refinement
+  mesh/        triangular + tetrahedral mesh generation, refinement
   fem/         P1 assembly (real + complex), implicit-Euler time stepper
   physics/
     heat.py    steady / transient conduction
@@ -67,7 +71,7 @@ cloudfem/
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     thermomech.py sequential thermal → structural (thermal stress)
 tests/         analytical validations (must stay green)
-examples/      induction_heating.py + output plots
+examples/      induction_heating.py + output plots, heat_3d.py (v0.7)
 docs/          roadmap
 ```
 
@@ -82,7 +86,10 @@ docs/          roadmap
 - [x] v0.6: Web UI — browser sketch → Delaunay mesh → steady heat
       solve → contour plot (stdlib-only server, validated: analytic
       rectangle L2 < 2 %, L-shape qmin > 0.1, max principle holds)
-- [ ] 3D (tetrahedral) support
+- [x] v0.7: 3D tetrahedral P1 elements — box meshes (Kuhn 6-tet
+      subdivision), steady heat conduction, manufactured-solution
+      convergence 1.72/1.86 (→ 2.0), affine exactness 1.4e-15,
+      steel-cube demo with mid-plane slices + 3D scatter
 
 ## Licence
 

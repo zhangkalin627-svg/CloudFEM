@@ -4,12 +4,13 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.5.** 2D triangular P1 finite elements (structured +
+> **Status: v0.6.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), steady/transient heat conduction,
 > time-harmonic eddy currents (planar + axisymmetric), sequential
 > EM-thermal (induction heating) coupling with temperature-dependent
-> conductivity, linear elasticity with thermal-stress coupling, and
-> nonlinear magnetostatics with B-H saturation (Picard solver).
+> conductivity, linear elasticity with thermal-stress coupling,
+> nonlinear magnetostatics with B-H saturation, and a minimal browser
+> Web UI (draw polygon → mesh → solve steady heat → contour plot).
 > Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
@@ -48,6 +49,8 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.4** Disk thermal stress (plane stress) | Analytical `σ_r, σ_θ` | rel. L2 err 2.6 % |
 | **v0.5** Nonlinear magnetostatics, manufactured solution | Theory: P1 → O(h²) | measured 1.96 / 1.98 (Newton, 5 iters) |
 | **v0.5** C-core inductor saturation curve | Linear at low NI, bends at knee | B(30kA·t) = 1.8 % of linear extrapolation |
+| **v0.6** Web UI: rectangle vs analytic linear profile | T(x) = T_hot(1−x/L) | rel. L2 err < 2 % |
+| **v0.6** Web UI: L-shape mesh quality + max principle | qmin floor, 0 ≤ T ≤ 100 | qmin > 0.1 (slivers filtered), bounds hold |
 
 Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py`
 
@@ -76,7 +79,9 @@ docs/          roadmap
       von Mises, sequential EM → thermal → structural chain)
 - [x] v0.5: Nonlinear B-H curve (2D magnetostatics with saturation,
       Newton solver with line search, C-core inductor demo)
-- [ ] Web UI: geometry sketch → mesh → solve → plots in the browser
+- [x] v0.6: Web UI — browser sketch → Delaunay mesh → steady heat
+      solve → contour plot (stdlib-only server, validated: analytic
+      rectangle L2 < 2 %, L-shape qmin > 0.1, max principle holds)
 - [ ] 3D (tetrahedral) support
 
 ## Licence

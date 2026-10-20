@@ -1,3 +1,11 @@
 __pycache__/
 *.pyc
 *.png
+
+# benchmark run outputs (BIG-M11 integration)
+tests/big_m9_curves.csv
+tests/big_m9_profile.csv
+tests/big_m10_caseB.csv
+tests/big_d2_profile_*.csv
+tests/big_d2_summary.npy
+tests/big_d2_summary.txt

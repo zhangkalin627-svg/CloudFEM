@@ -4,12 +4,13 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.5.** 2D triangular P1 finite elements (structured +
+> **Status: v1.6.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), plus second-order
 > Tet10 (10-node) tetrahedral elements for steady/transient heat
-> conduction and 3D linear elasticity (v1.5; higher-order accuracy
+> conduction (v1.6: Neumann/Robin boundary terms) and 3D linear
+> elasticity (v1.5; higher-order accuracy
 > at equal mesh size — see the roadmap entry), steady/transient heat
 > conduction (2D and 3D; the 3D
 > transient solver uses a consistent capacity matrix with
@@ -118,6 +119,7 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.5** Tet10 patch tests | Quadratic heat/elastic fields with compensating source/body force on an unstructured sphere mesh | Tet10 exact to ~1e-15 (heat) / ~1e-19 (elasticity); Tet4 2.3e-02 / 8.8e-06 |
 | **v1.5** Tet10 cantilever (BIG-M6 geometry, full model) | Euler-Bernoulli / Timoshenko tip deflection | (50, 2, 4) mesh, 2400 tets: −0.033 % vs EB, −0.81 % vs Timoshenko; Tet4 (100, 4, 8) at the same 4545 nodes: −5.95 % vs EB |
 | **v1.5** Tet10 transient heat | Cube cooling vs product-of-slabs series; adiabatic heat conservation; temporal orders (v1.0 protocol) | centre err −2.2e-03; drift 6.4e-16; BE 0.91/0.95, CN 1.94/2.38 |
+| **v1.6** Tet10 transient Neumann/Robin BCs | Adiabatic box + one-face heat flux: energy-balance drift; slab vs analytic (2/3)x Robin steady profile; max-principle spot check | Neumann drift 3.553e-15 / 1.561e-15 / 1.295e-15 (const / time-varying / space-varying); Robin steady inf-err 2.530e-08 (Tet4 2.404e-08); CN sub-threshold overshoot +2.240e-03 as in v1.0 |
 | **BIG-M6** Cantilever beam static tip deflection (L/H = 10, end traction, symmetry half model, 4 mesh levels + Richardson extrapolation) | Euler–Bernoulli `PL³/(3EI)` = 0.4000 mm | −6.09 % / −1.72 % / −0.77 % / −0.52 % (finest < 1 % criterion); vs Timoshenko −1.29 % at finest (shear share 0.78 %); Richardson limit 0.3997–0.4010 mm — between EB and Timoshenko, residual 0.5–0.8 % gap is a 3D-vs-beam model difference, not mesh error, in tests/test_cantilever_benchmark.py |
 | **BIG-M7** 1-D rod thermal stress (real heat -> thermal-stress chain on one tet mesh, 4 mesh levels) | Closed form `sigma = -E alpha <dT>` = -240.00 MPa | slab-mean sigma_xx err 3.233 % / 2.175 % / 1.948 % / 1.664 % (finest < 2 % criterion); end reactions +/-24.40 kN vs 24.00 kN analytic, in tests/test_bench_thermal_stress.py |
 | **BIG-M8** Axisymmetric eddy current: solid cylinder in uniform axial AC field (a/delta = 2.51, 5 mesh levels) | Bessel closed form, three independent routes agree < 1e-8: P/L = 79.8105 W/m | FEM P/L err +4.894 % -> +0.520 % (finest < 5 % criterion), in tests/test_bench_axi_eddy.py |
@@ -379,6 +381,23 @@ docs/          roadmap
       edge-element chain or the unstructured-mesh generators
       (converter output works, but boundary sets of converted
       meshes place midpoints on chords, not on curved surfaces).
+- [x] v1.6: Tet10 transient heat Neumann/Robin boundary conditions
+      (fem/tet10.py: transient_heat_tet10 gains neumann/robin dicts
+      with the same names and semantics as tet_heat; new public
+      assemble_boundary_terms_tet10; 6-point Dunavant quadrature
+      (4th-order exact) on the 6-node faces; time-varying Neumann
+      flux supported via callable(x, y, z, t); backward compatible —
+      neumann=robin=None reproduces v1.5 bit-for-bit). Validation
+      (tests/test_tet10_bc.py): energy-balance drift 3.553e-15 /
+      1.561e-15 / 1.295e-15 (constant / time-varying / space-varying
+      flux), net-zero pair 8.069e-16; Robin steady slab vs analytic
+      (2/3)x, Tet10 inf-err 2.530e-08 (Tet4 2.404e-08, same order,
+      dominated by BE time residual); uniform Robin equilibrium
+      6.106e-15; max-principle holds above the v1.0 dt threshold,
+      CN overshoots +2.240e-03 below it (documented, not hidden).
+      Limitations: time-varying Robin not supported; steady
+      solver still Dirichlet-only; maximum principle not
+      unconditional with the consistent mass matrix (as in v1.0).
 
 ## Licence
 

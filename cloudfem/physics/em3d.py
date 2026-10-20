@@ -127,7 +127,8 @@ def _eliminate(A, rhs, fixed):
 
 def solve_eddy_current_3d(mesh, nu=1.0 / MU0, sigma=0.0, omega=0.0,
                           B_applied=None, J_s=None, boundary=None,
-                          gauge_eps=1e-6, edge_data=None):
+                          gauge_eps=1e-6, edge_data=None,
+                          permc_spec=None):
     """Solve the 3D A-V eddy-current problem on a TetMesh.
 
     Parameters
@@ -146,6 +147,14 @@ def solve_eddy_current_3d(mesh, nu=1.0 / MU0, sigma=0.0, omega=0.0,
     gauge_eps : air-region regularisation ratio (module docstring).
     edge_data : optional (edges, elem_edges, elem_signs) from
         cloudfem.fem.tet_edge.build_edges, to avoid recomputation.
+    permc_spec : optional SuperLU column ordering passed to
+        scipy.sparse.linalg.spsolve (e.g. "MMD_AT_PLUS_A"). The
+        default (None, scipy's COLAMD) is unchanged. The ordering
+        does not change results (verified identical to ~1e-9
+        relative on the tests/study_v14_convergence.py baseline
+        case); it exists because factorisation memory/time of the
+        A-V system at ~1e5 edge DOFs is ordering-sensitive and
+        exceeds an 8 GB machine for some orderings.
 
     Returns
     -------
@@ -272,7 +281,10 @@ def solve_eddy_current_3d(mesh, nu=1.0 / MU0, sigma=0.0, omega=0.0,
                 fixed[gi] = float(a0_at(0.5 * (p0 + p1)) @ (p1 - p0))
     A2, rhs2, keep, idx, val = _eliminate(A, rhs, fixed)
     try:
-        sol = spla.spsolve(A2.tocsc(), rhs2)
+        if permc_spec is not None:
+            sol = spla.spsolve(A2.tocsc(), rhs2, permc_spec=permc_spec)
+        else:
+            sol = spla.spsolve(A2.tocsc(), rhs2)
     except RuntimeError as exc:
         raise RuntimeError(f"3D eddy-current solve failed: {exc}") from exc
     sol = np.asarray(sol).ravel()

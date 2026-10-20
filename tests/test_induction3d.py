@@ -48,6 +48,20 @@ Checks:
    measured at t = 3 s: surface 2.07, mean 1.81, core 1.29 against
    a power ratio of 1.75) -- and both must lie within
    [0.75, 1.45] x the power ratio.
+
+Post-v1.4 convergence study (tests/study_v14_convergence.py,
+report in the BIG-M6 delivery): the cold ratio 1.751 decomposes,
+against the mesh-converged axi value (itself +0.016 % vs the
+analytic Bessel cylinder), into skin discretisation at
+h/delta = 1.55 (~+310 W of the +795 W excess), a finite-air-box
+term the original attribution above omits (~+185 W: the applied
+field is pinned on the box boundary at half = 60 mm, and the loss
+grows ~1/half^3 as the box shrinks), and the finite-length end
+effect proper (the ~+300 W remainder; independent estimates
++250..+460 W). No assertion in this file was changed by the
+study; the h -> 0 / box -> infinity extrapolations there are
+two-level Richardson estimates with bracketed order, not
+measurements.
 """
 
 import numpy as np

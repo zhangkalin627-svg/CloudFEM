@@ -99,13 +99,13 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.2** Mesh energy conservation (mode-1 IC, undamped) | `½vᵀMv + ½uᵀKu` constant | drift 2.2e-12 over 5 periods (round-off level) |
 | **v1.2** Static limit, Rayleigh damping ζ = 0.10 at ω₁, ω₂ | v0.8 static solve `K⁻¹F` | rel err 1.4e-4 at t = 8/(ζω₁), 637 steps |
 | **v1.2** Cantilever step-load demo (1 kN, undamped) | Overshoot → 2× static deflection | peak 0.299 mm vs 2× static 0.307 mm; period within 2 % of T₁ |
-| **v1.3** Whitney edge elements: discrete exact sequence | `curl(grad φ) = 0` for any nodal φ | max \|B\| = 2.2e-16 |
+| **v1.3** Whitney edge elements: discrete exact sequence | `curl(grad φ) = 0` for any nodal φ | max \|B\| ~ 1e-15 (round-off level) |
 | **v1.3** Conducting sphere in uniform AC field, a/δ = 0.50 (160 Hz) | Spherical-Bessel analytic loss / centre field | P rel. err −7.9 %, centre-field err +0.02 % (h = 0.40 a) |
 | **v1.3** Conducting sphere, a/δ = 3.02 (5.76 kHz) | Spherical-Bessel analytic loss / centre field | P rel. err +13.7 %, centre-field err +9.3 % (skin layer h/δ ≈ 1.2) |
 | **v1.3** Cylinder in axial AC field, 100 Hz (R/δ = 0.4) | v0.2 axisymmetric solver, same R/σ/f | total-loss rel. diff −7.2 % (quasi-static tier) |
 | **v1.3** Cylinder at 2.5 kHz (R/δ = 2, L/D = 2) | v0.2 axisymmetric (infinite cylinder) | total-loss rel. diff +36.8 % — finite-length end effect + h ≈ δ skin resolution, documented in tests/test_em3d.py |
-| **v1.3** Low-frequency limits on the sphere | Theory: P ∝ f², P ∝ σ (δ ≫ a) | P(160)/P(40) = 15.10 (f² → 16), P(σ)/P(σ/10) = 9.88 (→ 10) |
-| **v1.3** Gauge regularisation sensitivity | Loss at gauge_eps = 1e-5 vs 1e-7 | rel. change 2.2e-16 (identical to round-off) |
+| **v1.3** Low-frequency limits on the sphere | Theory: P ∝ f², P ∝ σ (δ ≫ a) | P(160)/P(40) = 15.1-16.0 (f² → 16), P(σ)/P(σ/10) = 9.88-9.98 (→ 10), ranges over two runs |
+| **v1.3** Gauge regularisation sensitivity | Loss at gauge_eps = 1e-5 vs 1e-7 | rel. change <= 7.7e-07 (two runs: 2.2e-16, 7.7e-07) |
 
 Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py && python3 tests/test_em3d.py`
 
@@ -271,7 +271,7 @@ docs/          roadmap
       small artificial conductivity (gauge_eps = 1e-6 of sigma_max)
       in the mass term only, damping exactly the gradient null
       space (measured loss sensitivity between gauge_eps 1e-5 and
-      1e-7: relative change 2.2e-16, round-off level).
+      1e-7: relative change <= 7.7e-07 over repeated runs).
       Excitation: uniform applied field via tangential-A Dirichlet
       data A0 = (1/2) B x r on the outer boundary of the new
       sphere/cylinder-in-a-box meshes (mesh/unstructured3d.py), or
@@ -279,7 +279,7 @@ docs/          roadmap
       exactly for the affine Whitney field (centroid sampling of
       |E|^2 under-reads the loss by ~10 % at h ~ R/2, measured).
       Validated: discrete exact sequence (curl of a discrete
-      gradient = 2.2e-16); conducting sphere against the
+      gradient ~ 1e-15); conducting sphere against the
       spherical-Bessel analytic solution (loss -7.9 % at
       a/delta = 0.50 with the centre field at +0.02 %, +13.7 % at
       a/delta = 3.02 where h/delta ~ 1.2, both at h = 0.40 a);

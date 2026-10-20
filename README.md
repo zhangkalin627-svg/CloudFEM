@@ -4,10 +4,13 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.4.** 2D triangular P1 finite elements (structured +
+> **Status: v1.5.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
-> of spheres, cylinders and L-shaped blocks), steady/transient heat
+> of spheres, cylinders and L-shaped blocks), plus second-order
+> Tet10 (10-node) tetrahedral elements for steady/transient heat
+> conduction and 3D linear elasticity (v1.5; higher-order accuracy
+> at equal mesh size — see the roadmap entry), steady/transient heat
 > conduction (2D and 3D; the 3D
 > transient solver uses a consistent capacity matrix with
 > theta-method time integration and Dirichlet/Neumann/Robin
@@ -111,6 +114,10 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.4** 3D induction chain energy account | EM energy accumulated over the run vs discrete enthalpy gain of the adiabatic billet (an algebraic identity of the discrete chain when the transfer is conservative) | rel. err 3.3e-16 |
 | **v1.4** sigma(T) feedback, hot point | Surface ~340 C: frozen-sigma peak ΔT 382 K vs sigma(T) 322 K (hot skin turns transparent, deposition deepens); power 11.53 → 11.41 kW across the turnover | measured in tests/test_induction3d.py |
 | **v1.4** 3D chain vs 2D axisymmetric chain | Same billet and sigma(T) law, independent solvers: cold-power ratio 1.75 (3D end effect + skin resolution — the v1.3 band); mean-rise ratio 1.79 vs 1.82 from the power/volume expectation | −1.4 % deviation |
+| **v1.5** Tet10 heat convergence, manufactured sin·sin·sin | Least-squares orders over n = 2, 4, 6, 8 cells | L2 order 2.90 (expect 3), H1 order 1.86 (expect 2); Tet4 on the same grids: 1.61 / 0.84 (rising to 2 / 1) |
+| **v1.5** Tet10 patch tests | Quadratic heat/elastic fields with compensating source/body force on an unstructured sphere mesh | Tet10 exact to ~1e-15 (heat) / ~1e-19 (elasticity); Tet4 2.3e-02 / 8.8e-06 |
+| **v1.5** Tet10 cantilever (BIG-M6 geometry, full model) | Euler-Bernoulli / Timoshenko tip deflection | (50, 2, 4) mesh, 2400 tets: −0.033 % vs EB, −0.81 % vs Timoshenko; Tet4 (100, 4, 8) at the same 4545 nodes: −5.95 % vs EB |
+| **v1.5** Tet10 transient heat | Cube cooling vs product-of-slabs series; adiabatic heat conservation; temporal orders (v1.0 protocol) | centre err −2.2e-03; drift 6.4e-16; BE 0.91/0.95, CN 1.94/2.38 |
 | **BIG-M6** Cantilever beam static tip deflection (L/H = 10, end traction, symmetry half model, 4 mesh levels + Richardson extrapolation) | Euler–Bernoulli `PL³/(3EI)` = 0.4000 mm | −6.09 % / −1.72 % / −0.77 % / −0.52 % (finest < 1 % criterion); vs Timoshenko −1.29 % at finest (shear share 0.78 %); Richardson limit 0.3997–0.4010 mm — between EB and Timoshenko, residual 0.5–0.8 % gap is a 3D-vs-beam model difference, not mesh error, in tests/test_cantilever_benchmark.py |
 | **BIG-M7** 1-D rod thermal stress (real heat -> thermal-stress chain on one tet mesh, 4 mesh levels) | Closed form `sigma = -E alpha <dT>` = -240.00 MPa | slab-mean sigma_xx err 3.233 % / 2.175 % / 1.948 % / 1.664 % (finest < 2 % criterion); end reactions +/-24.40 kN vs 24.00 kN analytic, in tests/test_bench_thermal_stress.py |
 | **BIG-M8** Axisymmetric eddy current: solid cylinder in uniform axial AC field (a/delta = 2.51, 5 mesh levels) | Bessel closed form, three independent routes agree < 1e-8: P/L = 79.8105 W/m | FEM P/L err +4.894 % -> +0.520 % (finest < 5 % criterion), in tests/test_bench_axi_eddy.py |
@@ -119,7 +126,7 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **BIG-D2** Cylinder skin effect at 50 kHz vs the classical planar formula (mu_r = 1 main, mu_r = 200 contrast) | Bessel/Kelvin analytic P/L, three routes agree ~1e-14 | FEM P/L err +0.515 % (mu_r = 1) / +0.632 % (mu_r = 200), finest < 1 % criterion; delta_eff err +1.31 %, in tests/test_bench_skin50k.py |
 | **BIG-M11** Benchmark run-all driver | - | `python3 tests/run_all_benchmarks.py` runs BIG-M6..M10 + BIG-D2 in sequence and prints a per-benchmark error / PASS-FAIL summary (BIG-D3 skipped: external realworld_sim dependency) |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py && python3 tests/test_em3d.py && python3 tests/test_induction3d.py && python3 tests/test_cantilever_benchmark.py && python3 tests/test_bench_thermal_stress.py && python3 tests/test_bench_axi_eddy.py && python3 tests/test_bench_induction_chain.py && python3 tests/test_bench_nonlinear_bh.py && python3 tests/test_bench_skin50k.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py && python3 tests/test_em3d.py && python3 tests/test_induction3d.py && python3 tests/test_cantilever_benchmark.py && python3 tests/test_bench_thermal_stress.py && python3 tests/test_bench_axi_eddy.py && python3 tests/test_bench_induction_chain.py && python3 tests/test_bench_nonlinear_bh.py && python3 tests/test_bench_skin50k.py && python3 tests/test_tet10.py`
 
 Benchmarks only (BIG-M6..M10 + BIG-D2, one command with a summary table): `python3 tests/run_all_benchmarks.py`
 
@@ -130,11 +137,15 @@ cloudfem/
   mesh/        triangular + tetrahedral mesh generation, refinement;
                unstructured3d.py Delaunay tet meshes (sphere /
                cylinder / L block, v1.1; sphere / cylinder embedded
-               in an air box, v1.3)
+               in an air box, v1.3),
+               tet10_mesh.py Tet10 meshes: Tet4 -> Tet10 edge-midpoint
+               converter + box meshes (v1.5)
   fem/         P1 assembly (real + complex), implicit-Euler time stepper,
                tet_heat.py 3D transient heat (theta method, v1.0),
                tet_edge.py lowest-order Nedelec (Whitney) edge
-               elements on tetrahedra (v1.3)
+               elements on tetrahedra (v1.3),
+               tet10.py Tet10 (quadratic) heat conduction: steady +
+               transient (theta method), exact mass matrix (v1.5)
   physics/
     heat.py    steady / transient conduction
     em.py      time-harmonic eddy currents (A-formulation), Joule heating
@@ -148,6 +159,8 @@ cloudfem/
     coupled.py sequential EM → thermal induction heating
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
+    elastic_tet10.py 3D linear elasticity + thermal stress, Tet10
+               (quadratic) elements (v1.5)
     modal3d.py 3D structural dynamics: mass matrices + modal analysis
     dynamics3d.py 3D transient dynamics: Newmark time integration
                (average / linear acceleration), Rayleigh damping,
@@ -341,6 +354,31 @@ docs/          roadmap
       magnetic Curie transition), adiabatic billet surface,
       explicit (first-order) sigma update, absolute powers inherit
       the v1.3 h/delta error band
+- [x] v1.5: Second-order Tet10 (10-node) tetrahedral elements
+      (mesh/tet10_mesh.py, fem/tet10.py, physics/elastic_tet10.py):
+      quadratic shape functions in barycentric form, 5-point Keast
+      quadrature (degree-3 exact) for stiffness/loads, and an
+      exactly integrated consistent mass matrix (closed-form
+      barycentric moments). Covers steady heat conduction,
+      transient heat (theta method, Dirichlet BCs), and 3D linear
+      elasticity with body force, 6-node-face tractions and thermal
+      loads; meshes come from a Tet4 -> Tet10 edge-midpoint
+      converter (corner indices preserved) or directly as box
+      meshes. Validation (tests/test_tet10.py): manufactured-
+      solution convergence orders L2 2.90 / H1 1.86 (Tet4 on the
+      same grids: 1.61 / 0.84); quadratic patch fields reproduced
+      to round-off on an unstructured sphere mesh where Tet4 is
+      not exact; on the BIG-M6 cantilever the Tet10 (50, 2, 4) mesh
+      reaches -0.033 % vs Euler-Bernoulli at the same node count
+      where Tet4 (100, 4, 8) sits at -5.95 %; transient checks
+      (series solution, exact adiabatic heat conservation, BE/CN
+      temporal orders) match the v1.0 P1 results. Limitations:
+      affine element maps only (midpoints at geometric midpoints,
+      no curved edges); transient solver is Dirichlet-only (no
+      Neumann/Robin face terms yet); no Tet10 support in the EM
+      edge-element chain or the unstructured-mesh generators
+      (converter output works, but boundary sets of converted
+      meshes place midpoints on chords, not on curved surfaces).
 
 ## Licence
 

@@ -4,7 +4,7 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.2.** 2D triangular P1 finite elements (structured +
+> **Status: v1.3.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), steady/transient heat
@@ -12,7 +12,8 @@ entirely on commodity Linux cloud machines.
 > transient solver uses a consistent capacity matrix with
 > theta-method time integration and Dirichlet/Neumann/Robin
 > boundary conditions), time-harmonic eddy currents
-> (planar + axisymmetric), sequential EM-thermal (induction heating)
+> (planar + axisymmetric in 2D; 3D with lowest-order Nedelec edge
+> elements in an A-V formulation), sequential EM-thermal (induction heating)
 > coupling with temperature-dependent conductivity, linear elasticity
 > with thermal-stress coupling (2D plane stress/strain and 3D
 > tetrahedral, including a transient temperature-history stress
@@ -98,8 +99,15 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.2** Mesh energy conservation (mode-1 IC, undamped) | `½vᵀMv + ½uᵀKu` constant | drift 2.2e-12 over 5 periods (round-off level) |
 | **v1.2** Static limit, Rayleigh damping ζ = 0.10 at ω₁, ω₂ | v0.8 static solve `K⁻¹F` | rel err 1.4e-4 at t = 8/(ζω₁), 637 steps |
 | **v1.2** Cantilever step-load demo (1 kN, undamped) | Overshoot → 2× static deflection | peak 0.299 mm vs 2× static 0.307 mm; period within 2 % of T₁ |
+| **v1.3** Whitney edge elements: discrete exact sequence | `curl(grad φ) = 0` for any nodal φ | max \|B\| = 2.2e-16 |
+| **v1.3** Conducting sphere in uniform AC field, a/δ = 0.50 (160 Hz) | Spherical-Bessel analytic loss / centre field | P rel. err −7.9 %, centre-field err +0.02 % (h = 0.40 a) |
+| **v1.3** Conducting sphere, a/δ = 3.02 (5.76 kHz) | Spherical-Bessel analytic loss / centre field | P rel. err +13.7 %, centre-field err +9.3 % (skin layer h/δ ≈ 1.2) |
+| **v1.3** Cylinder in axial AC field, 100 Hz (R/δ = 0.4) | v0.2 axisymmetric solver, same R/σ/f | total-loss rel. diff −7.2 % (quasi-static tier) |
+| **v1.3** Cylinder at 2.5 kHz (R/δ = 2, L/D = 2) | v0.2 axisymmetric (infinite cylinder) | total-loss rel. diff +36.8 % — finite-length end effect + h ≈ δ skin resolution, documented in tests/test_em3d.py |
+| **v1.3** Low-frequency limits on the sphere | Theory: P ∝ f², P ∝ σ (δ ≫ a) | P(160)/P(40) = 15.10 (f² → 16), P(σ)/P(σ/10) = 9.88 (→ 10) |
+| **v1.3** Gauge regularisation sensitivity | Loss at gauge_eps = 1e-5 vs 1e-7 | rel. change 2.2e-16 (identical to round-off) |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py && python3 tests/test_em3d.py`
 
 ## Layout
 
@@ -107,12 +115,18 @@ Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.
 cloudfem/
   mesh/        triangular + tetrahedral mesh generation, refinement;
                unstructured3d.py Delaunay tet meshes (sphere /
-               cylinder / L block, v1.1)
+               cylinder / L block, v1.1; sphere / cylinder embedded
+               in an air box, v1.3)
   fem/         P1 assembly (real + complex), implicit-Euler time stepper,
-               tet_heat.py 3D transient heat (theta method, v1.0)
+               tet_heat.py 3D transient heat (theta method, v1.0),
+               tet_edge.py lowest-order Nedelec (Whitney) edge
+               elements on tetrahedra (v1.3)
   physics/
     heat.py    steady / transient conduction
     em.py      time-harmonic eddy currents (A-formulation), Joule heating
+    em3d.py    3D time-harmonic eddy currents: edge-element A-V
+               formulation, background-field / current excitation,
+               Joule heating for the EM → thermal chain (v1.3)
     coupled.py sequential EM → thermal induction heating
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
@@ -127,7 +141,9 @@ examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
                thermal_stress_3d.py (v0.8), modal_beam_3d.py (v0.9),
                transient_thermomech_3d.py (v1.0),
                unstructured_cylinder_3d.py (v1.1),
-               transient_beam_3d.py (v1.2)
+               transient_beam_3d.py (v1.2),
+               eddy_current_3d.py (v1.3: 3D eddy currents in a
+               billet + EM → transient-heat chain)
 docs/          roadmap
 ```
 
@@ -241,6 +257,44 @@ docs/          roadmap
       Rayleigh damping (1.4e-4 vs the v0.8 solve). Demo:
       cantilever step load, tip overshoot 0.299 mm approaching the
       undamped 2x-static value 0.307 mm
+- [x] v1.3: 3D time-harmonic eddy currents — lowest-order Nedelec
+      (Whitney) edge elements in an A-V formulation
+      (physics/em3d.py, fem/tet_edge.py): edge circulations for A
+      everywhere, nodal V in conducting regions only (one node per
+      connected component pinned), e^{iwt} convention and
+      Q = sigma |E|^2 / 2 output identical to the 2D EM modules, so
+      the v1.0 transient heat solver consumes the 3D Joule field
+      unchanged and the 3D EM -> thermal -> structural flagship
+      chain is closed. Gauge in air: Whitney forms are elementwise
+      divergence-free, so an elementwise grad-div penalty vanishes
+      identically; the air region is instead regularised with a
+      small artificial conductivity (gauge_eps = 1e-6 of sigma_max)
+      in the mass term only, damping exactly the gradient null
+      space (measured loss sensitivity between gauge_eps 1e-5 and
+      1e-7: relative change 2.2e-16, round-off level).
+      Excitation: uniform applied field via tangential-A Dirichlet
+      data A0 = (1/2) B x r on the outer boundary of the new
+      sphere/cylinder-in-a-box meshes (mesh/unstructured3d.py), or
+      an imposed current density J_s. Joule loss is integrated
+      exactly for the affine Whitney field (centroid sampling of
+      |E|^2 under-reads the loss by ~10 % at h ~ R/2, measured).
+      Validated: discrete exact sequence (curl of a discrete
+      gradient = 2.2e-16); conducting sphere against the
+      spherical-Bessel analytic solution (loss -7.9 % at
+      a/delta = 0.50 with the centre field at +0.02 %, +13.7 % at
+      a/delta = 3.02 where h/delta ~ 1.2, both at h = 0.40 a);
+      finite cylinder against the v0.2 axisymmetric solver
+      (-7.2 % in the quasi-static 100 Hz tier; +36.8 % at 2.5 kHz,
+      attributed to the L/D = 2 billet end effect plus h ~ delta
+      skin resolution and documented as a band, not hidden);
+      low-frequency f^2 and sigma scalings and gauge sensitivity
+      in tests/test_em3d.py. Demo: steel billet in an axial AC
+      field, 201 W of Joule heating chained into a 30 s transient
+      heat run. Limitations: linear materials, uniform mesh only
+      (skin layers thinner than h are under-resolved), far-field
+      boundary at finite distance ((a/L)^3 perturbation), direct
+      sparse solve keeps edge counts in the tens of thousands,
+      omega -> 0 magnetostatics out of scope
 
 ## Licence
 

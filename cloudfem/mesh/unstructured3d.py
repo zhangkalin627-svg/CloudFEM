@@ -481,3 +481,154 @@ def l_block_mesh(lx=3.0, ly=3.0, notch=(1.0, 1.0), height=1.0, h=0.35,
     # alone would miss them.
     tags["boundary"] = np.where(bnd)[0].astype(int)
     return TetMesh(nodes, elements, tags)
+
+
+# ---------------------------------------------------------------------------
+# Body-in-a-box meshes (v1.3): a sphere or cylinder embedded in a larger
+# air box, for 3D eddy-current problems with an applied background field.
+# One conforming Delaunay mesh covers both regions; the interface is
+# resolved by true-surface samples exactly as in the single-body meshes
+# above, and a region test on element centroids separates body elements
+# from air elements. The outer box faces carry the usual plane tags
+# ('xmin', ..., 'zmax'); 'outer' is their union and 'body' the tracked
+# body-surface node flags.
+# ---------------------------------------------------------------------------
+
+def _box_face_points(lo, hi, h):
+    """Sample the 6 faces of an axis-aligned box on ~h grids."""
+    grids = []
+    axes = []
+    for d in range(3):
+        n = max(2, int(round((hi[d] - lo[d]) / h)) + 1)
+        axes.append(np.linspace(lo[d], hi[d], n))
+    for d in range(3):
+        o = [i for i in range(3) if i != d]
+        for val in (lo[d], hi[d]):
+            uu, vv = np.meshgrid(axes[o[0]], axes[o[1]], indexing="ij")
+            pts = np.zeros((uu.size, 3))
+            pts[:, d] = val
+            pts[:, o[0]] = uu.ravel()
+            pts[:, o[1]] = vv.ravel()
+            grids.append(pts)
+    return np.vstack(grids)
+
+
+def _body_in_box(lo, hi, h, body_surf, away_from_body, smooth_steps=8):
+    """Shared pipeline for the body-in-box meshes.
+
+    lo, hi : box corners (3,). body_surf : (S, 3) true-surface samples
+    of the embedded body. away_from_body : callable(P) -> bool array,
+    True where points keep the pipeline's ~0.35h stand-off from the
+    body surface (either well inside or well outside the body).
+    Returns (nodes, elements, bnd) with bnd flagging all surface
+    samples (box faces + body surface).
+    """
+    lo = np.asarray(lo, dtype=float)
+    hi = np.asarray(hi, dtype=float)
+    face = _box_face_points(lo, hi, h)
+    m = 0.35 * h
+
+    def in_box(P, shrink):
+        return ((P >= lo + shrink).all(axis=1)
+                & (P <= hi - shrink).all(axis=1))
+
+    def contains(P):
+        return in_box(P, 0.0)
+
+    def shrunk(P):
+        return in_box(P, m) & away_from_body(P)
+
+    ipts = _interior_points3(shrunk, lo, hi, h)
+    points = np.vstack([face, body_surf, ipts])
+    points, kept = _deduplicate3(points, tol=0.15 * h)
+    is_bnd = kept < len(face) + len(body_surf)
+    return _build_tet_mesh(points, is_bnd, contains, shrunk, h,
+                           smooth_steps)
+
+
+def _box_tags(nodes, lo, hi, h, bnd):
+    tol = 0.02 * h
+    preds = {
+        "xmin": lambda P: np.abs(P[:, 0] - lo[0]) < tol,
+        "xmax": lambda P: np.abs(P[:, 0] - hi[0]) < tol,
+        "ymin": lambda P: np.abs(P[:, 1] - lo[1]) < tol,
+        "ymax": lambda P: np.abs(P[:, 1] - hi[1]) < tol,
+        "zmin": lambda P: np.abs(P[:, 2] - lo[2]) < tol,
+        "zmax": lambda P: np.abs(P[:, 2] - hi[2]) < tol,
+    }
+    tags = _tags(nodes, preds, tol)
+    tags["outer"] = np.unique(np.concatenate(
+        [tags[k] for k in ("xmin", "xmax", "ymin", "ymax",
+                           "zmin", "zmax")]))
+    return tags
+
+
+def sphere_in_box_mesh(radius, half, h, center=(0.0, 0.0, 0.0),
+                       smooth_steps=8):
+    """Tetrahedral mesh of a solid sphere inside a cubic air box.
+
+    The box is [center-half, center+half]^3. Boundary tags: the six
+    box faces, 'outer' (their union) and 'body' (sphere surface
+    nodes). Elements are not tagged; classify by centroid distance
+    to `center` (inside the sphere iff < radius).
+    """
+    R = float(radius)
+    c = np.asarray(center, dtype=float)
+    lo, hi = c - half, c + half
+
+    n_surf = max(64, int(np.ceil(4.0 * np.pi * R ** 2 / (0.866 * h ** 2))))
+    i = np.arange(n_surf)
+    phi = np.arccos(1.0 - 2.0 * (i + 0.5) / n_surf)
+    theta = np.pi * (1.0 + np.sqrt(5.0)) * i
+    surf = R * np.column_stack([np.sin(phi) * np.cos(theta),
+                                np.sin(phi) * np.sin(theta),
+                                np.cos(phi)]) + c
+    m = 0.35 * h
+
+    def away(P):
+        r = np.linalg.norm(P - c, axis=1)
+        return (r <= R - m) | (r >= R + m)
+
+    nodes, elements, bnd = _body_in_box(lo, hi, h, surf, away,
+                                        smooth_steps)
+    tags = _box_tags(nodes, lo, hi, h, bnd)
+    # body-surface flags: tracked samples that ended up on the sphere
+    on_sphere = np.abs(np.linalg.norm(nodes - c, axis=1) - R) < 0.02 * h
+    tags["body"] = np.where(bnd & on_sphere)[0].astype(int)
+    return TetMesh(nodes, elements, tags)
+
+
+def cylinder_in_box_mesh(radius, height, half, h, smooth_steps=8):
+    """Tetrahedral mesh of a finite cylinder inside an air box.
+
+    The cylinder (axis = z, centred at the origin) spans
+    z in [-height/2, height/2]; the box is [-half, half]^3.
+    Boundary tags as in sphere_in_box_mesh; classify elements by
+    centroid (inside iff r < radius and |z| < height/2).
+    """
+    R, H = float(radius), float(height)
+    lo = np.array([-half, -half, -half], dtype=float)
+    hi = np.array([half, half, half], dtype=float)
+
+    lat = _lateral_points(R, -H / 2, H / 2, h)
+    cap0 = _cap_points(0.0, R, -H / 2, h)
+    cap1 = _cap_points(0.0, R, H / 2, h)
+    surf = np.vstack([lat, cap0, cap1])
+    m = 0.35 * h
+
+    def away(P):
+        r = np.linalg.norm(P[:, :2], axis=1)
+        z = np.abs(P[:, 2])
+        inside = (r <= R - m) & (z <= H / 2 - m)
+        outside = (r >= R + m) | (z >= H / 2 + m)
+        return inside | outside
+
+    nodes, elements, bnd = _body_in_box(lo, hi, h, surf, away,
+                                        smooth_steps)
+    tags = _box_tags(nodes, lo, hi, h, bnd)
+    r = np.linalg.norm(nodes[:, :2], axis=1)
+    on_body = ((np.abs(r - R) < 0.02 * h) & (np.abs(nodes[:, 2]) <= H / 2))
+    on_body |= np.abs(np.abs(nodes[:, 2]) - H / 2) < 0.02 * h
+    on_body &= r <= R + 0.02 * h
+    tags["body"] = np.where(bnd & on_body)[0].astype(int)
+    return TetMesh(nodes, elements, tags)

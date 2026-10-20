@@ -605,8 +605,17 @@ def cylinder_in_box_mesh(radius, height, half, h, smooth_steps=8):
     z in [-height/2, height/2]; the box is [-half, half]^3.
     Boundary tags as in sphere_in_box_mesh; classify elements by
     centroid (inside iff r < radius and |z| < height/2).
+
+    The air box spans z in [-half, half]; a conductor taller than the box
+    (height > 2*half) would be silently truncated, so this is an error.
     """
     R, H = float(radius), float(height)
+    if H > 2 * half:
+        raise ValueError(
+            f"cylinder_in_box_mesh: height={H} exceeds box z-extent "
+            f"2*half={2 * half}: the conductor would be silently truncated. "
+            f"Use half >= height/2."
+        )
     lo = np.array([-half, -half, -half], dtype=float)
     hi = np.array([half, half, half], dtype=float)
 

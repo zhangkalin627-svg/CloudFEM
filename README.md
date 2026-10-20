@@ -4,7 +4,7 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.1.** 2D triangular P1 finite elements (structured +
+> **Status: v1.2.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), steady/transient heat
@@ -17,7 +17,9 @@ entirely on commodity Linux cloud machines.
 > with thermal-stress coupling (2D plane stress/strain and 3D
 > tetrahedral, including a transient temperature-history stress
 > chain), 3D structural dynamics (consistent/lumped mass
-> matrices, modal analysis), nonlinear magnetostatics with B-H
+> matrices, modal analysis, and Newmark transient time integration
+> with Rayleigh damping plus a modal-superposition solver),
+> nonlinear magnetostatics with B-H
 > saturation, and a minimal browser Web UI (draw polygon → mesh →
 > solve steady heat → contour plot).
 > Validated against analytical solutions. Roadmap below.
@@ -89,8 +91,15 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.1** Sphere, uniform source (unstructured) | Analytical parabola `q(R²−r²)/(6k)` | rel. RMS 3.7e-3 / 1.9e-3, rate 1.59 |
 | **v1.1** Sphere thermal stress via v0.8 solver (unstructured mesh) | Analytical `−EαΔT/(1−2ν)`, u = 0 | rel. err 2.0e-15, shear ≈ 8e-16 |
 | **v1.1** Steel cylinder billet demo (unstructured) | Infinite-cylinder bound `QR²/(4k)` = 62.5 °C | centre rise 48.79 °C < bound |
+| **v1.2** SDOF step + harmonic response (Newmark core, 1×1) | Closed form `(F₀/k)(1−cos ωt)`, harmonic analogue | step err 9.1e-4 @ Δt = T/200, harmonic err 9.9e-5 @ T/400 |
+| **v1.2** Temporal order, average acceleration | Theory: O(Δt²) | measured 1.997 (Δt = T/25…T/400) |
+| **v1.2** Linear-acceleration (β = 1/6) stability limit | Theory: stable iff `ωΔt ≤ 2√3` | amplitude 1.000 at ωΔt = 3.0 and 2√3, ×2.8e7 growth at 4.0; average-acceleration bounded at 4.0 |
+| **v1.2** Cantilever step response vs exact modal history | 12 v0.9 modes in closed form + static (mode-acceleration) correction | direct Newmark RMS rel 6.9e-4, max 2.1e-3 @ Δt = T₁/400; modal superposition RMS 8.4e-4 |
+| **v1.2** Mesh energy conservation (mode-1 IC, undamped) | `½vᵀMv + ½uᵀKu` constant | drift 2.2e-12 over 5 periods (round-off level) |
+| **v1.2** Static limit, Rayleigh damping ζ = 0.10 at ω₁, ω₂ | v0.8 static solve `K⁻¹F` | rel err 1.4e-4 at t = 8/(ζω₁), 637 steps |
+| **v1.2** Cantilever step-load demo (1 kN, undamped) | Overshoot → 2× static deflection | peak 0.299 mm vs 2× static 0.307 mm; period within 2 % of T₁ |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py`
 
 ## Layout
 
@@ -108,13 +117,17 @@ cloudfem/
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
     modal3d.py 3D structural dynamics: mass matrices + modal analysis
+    dynamics3d.py 3D transient dynamics: Newmark time integration
+               (average / linear acceleration), Rayleigh damping,
+               modal superposition (v1.2)
     thermomech.py sequential thermal → structural (thermal stress, 2D+3D,
                transient 3D chain with peak summary, v1.0)
 tests/         analytical validations (must stay green)
 examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
                thermal_stress_3d.py (v0.8), modal_beam_3d.py (v0.9),
                transient_thermomech_3d.py (v1.0),
-               unstructured_cylinder_3d.py (v1.1)
+               unstructured_cylinder_3d.py (v1.1),
+               transient_beam_3d.py (v1.2)
 docs/          roadmap
 ```
 
@@ -198,6 +211,36 @@ docs/          roadmap
       factor), uniform h only (thin walls need h < wall/3), and the
       L block's re-entrant edge is resolved by the centroid test
       alone (O(h) stair-step, no leaks)
+- [x] v1.2: 3D transient structural dynamics — Newmark-beta time
+      integration of M u'' + C u' + K u = F(t) on the v0.8 stiffness
+      and v0.9 mass matrices (physics/dynamics3d.py), structured
+      like the v1.0 theta-method heat solver (effective stiffness
+      Khat = K + gamma/(beta dt) C + M/(beta dt^2) factorised once,
+      exact landing on t_end). Named parameter sets: "average"
+      (beta = 1/4, gamma = 1/2; second order, unconditionally
+      stable, conserves the quadratic mechanical energy to
+      round-off) and "linear" (beta = 1/6; second order but
+      conditionally stable, omega dt <= 2 sqrt(3) -- on a mesh this
+      binds at the *highest* modal frequency, so it is a comparison
+      / teaching variant, a caveat verified numerically rather than
+      just stated). Rayleigh damping C = alpha M + beta_r K,
+      consistent or lumped mass, initial displacement / velocity,
+      loads as constant nodal vectors or callables F(t) (step,
+      harmonic); homogeneous Dirichlet only -- nonzero prescribed
+      motion is rejected with an error, not silently ignored. A
+      modal-superposition solver (same Newmark core in modal
+      coordinates) is included. Validated: SDOF step / harmonic
+      closed forms (9.1e-4 / 9.9e-5), temporal order 1.997,
+      stability boundary reproduced (amplitude 1.000 at
+      omega dt = 2 sqrt(3), x2.8e7 growth at 4.0), cantilever step
+      response against the exact 12-mode history with
+      mode-acceleration static correction (RMS 6.9e-4 of peak; the
+      residual is the (omega_j dt)^2/12 period elongation of the
+      highest retained modes, diagnosed mode by mode), mesh energy
+      drift 2.2e-12 over 5 periods, and the static limit under
+      Rayleigh damping (1.4e-4 vs the v0.8 solve). Demo:
+      cantilever step load, tip overshoot 0.299 mm approaching the
+      undamped 2x-static value 0.307 mm
 
 ## Licence
 

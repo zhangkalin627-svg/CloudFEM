@@ -4,9 +4,11 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.0.** 2D triangular P1 finite elements (structured +
-> unstructured Delaunay meshes), tetrahedral P1 elements for 3D box
-> domains, steady/transient heat conduction (2D and 3D; the 3D
+> **Status: v1.1.** 2D triangular P1 finite elements (structured +
+> unstructured Delaunay meshes), tetrahedral P1 elements for 3D
+> domains (structured box meshes plus unstructured Delaunay meshes
+> of spheres, cylinders and L-shaped blocks), steady/transient heat
+> conduction (2D and 3D; the 3D
 > transient solver uses a consistent capacity matrix with
 > theta-method time integration and Dirichlet/Neumann/Robin
 > boundary conditions), time-harmonic eddy currents
@@ -80,14 +82,23 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.0** Temporal convergence order (manufactured decay) | Theory: BE O(Δt), CN O(Δt²) (step-halving differences) | measured BE 0.91 / 0.96, CN 1.99 / 2.00 |
 | **v1.0** Transient chain: uniform source, fully constrained | `−EαΔT(t)/(1−2ν)`, T(t) = T₀ + Qt/ρcₚ exact | stress rel. err ≤ 5.7e-14, von Mises ≈ 0 |
 | **v1.0** Quench demo (steel cube, oil, free body) | Peak stress at intermediate t, < E·α·ΔT scale 1980 MPa | peak von Mises 365.2 MPa at t = 9.0 s, decays to 107 MPa |
+| **v1.1** Unstructured sphere/cylinder volume convergence | Analytic `4πR³/3`, `πR²H`; faceting → O(h²) | sphere errs 6.4e-2/3.2e-2/1.6e-2, rates 2.00/2.04; cylinder 2.6e-2/1.2e-2/6.4e-3, rates 2.02/1.96 |
+| **v1.1** L-block volume (planar faces) | Analytic union volume 5.0 | rel. err 1.8e-16 / 0.0 |
+| **v1.1** Unstructured mesh quality (4 test meshes) | Radius-ratio q = 3r/R; floor + sliver fraction | qmin 0.031–0.045, median 0.77–0.80, frac(q<0.05) ≤ 0.11 % |
+| **v1.1** Hollow-cylinder radial conduction (unstructured) | Analytical log profile `T = 100·ln(R/r)/ln(R/ri)` | rel. RMS 4.9e-3 / 2.6e-3, rate 1.83 |
+| **v1.1** Sphere, uniform source (unstructured) | Analytical parabola `q(R²−r²)/(6k)` | rel. RMS 3.7e-3 / 1.9e-3, rate 1.59 |
+| **v1.1** Sphere thermal stress via v0.8 solver (unstructured mesh) | Analytical `−EαΔT/(1−2ν)`, u = 0 | rel. err 2.0e-15, shear ≈ 8e-16 |
+| **v1.1** Steel cylinder billet demo (unstructured) | Infinite-cylinder bound `QR²/(4k)` = 62.5 °C | centre rise 48.79 °C < bound |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py`
 
 ## Layout
 
 ```
 cloudfem/
-  mesh/        triangular + tetrahedral mesh generation, refinement
+  mesh/        triangular + tetrahedral mesh generation, refinement;
+               unstructured3d.py Delaunay tet meshes (sphere /
+               cylinder / L block, v1.1)
   fem/         P1 assembly (real + complex), implicit-Euler time stepper,
                tet_heat.py 3D transient heat (theta method, v1.0)
   physics/
@@ -102,7 +113,8 @@ cloudfem/
 tests/         analytical validations (must stay green)
 examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
                thermal_stress_3d.py (v0.8), modal_beam_3d.py (v0.9),
-               transient_thermomech_3d.py (v1.0)
+               transient_thermomech_3d.py (v1.0),
+               unstructured_cylinder_3d.py (v1.1)
 docs/          roadmap
 ```
 
@@ -159,6 +171,33 @@ docs/          roadmap
       107 MPa as the cube homogenises; the early consistent-mass
       surface overshoot (~12 K on an 825 K jump) is documented in
       the demo, not hidden
+- [x] v1.1: 3D unstructured tetrahedral meshing — breaks the box-only
+      restriction of the 3D solvers. mesh/unstructured3d.py follows
+      the v0.3 2D recipe in 3D: true-surface sampling (Fibonacci
+      lattice on the sphere, ring stacks on the cylinder, face grids
+      on the two-box L union with interface samples dropped),
+      jittered-grid interior, Delaunay, centroid filter, quality-
+      aware Laplacian smoothing, retriangulation, and bounded
+      sliver-vertex removal (radius-ratio q < 0.02; boundary vertices
+      never removed). Two measured pitfalls are designed around:
+      interior points stand 0.35h off the surface (closer, and the
+      wall layer fills with paper-thin tetrahedra), and cylinder
+      rings share one angular phase (alternating phases form
+      near-coplanar "diamond" quadruples with q ~ 0.006). Output is
+      a plain TetMesh, so the steady/transient heat, elasticity and
+      modal solvers consume it unchanged. Validated: volume
+      convergence at rates 2.00/2.04 (sphere) and 2.02/1.96
+      (cylinder), L-block volume exact (planar faces), qmin
+      0.031-0.045 with median ~0.78 on the test meshes, hollow-
+      cylinder log-profile conduction (rel. RMS 4.9e-3 -> 2.6e-3,
+      rate 1.83), sphere parabolic source profile (3.7e-3 ->
+      1.9e-3, rate 1.59), and the fully constrained sphere heating
+      reproduced to 2.0e-15 through the v0.8 stress solver.
+      Limitations: curved surfaces are planar-faceted (volume error
+      O(h^2), cylinder dominated by the circumferential polygon
+      factor), uniform h only (thin walls need h < wall/3), and the
+      L block's re-entrant edge is resolved by the centroid test
+      alone (O(h) stair-step, no leaks)
 
 ## Licence
 

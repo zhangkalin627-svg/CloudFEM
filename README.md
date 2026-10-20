@@ -4,7 +4,7 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.3.** 2D triangular P1 finite elements (structured +
+> **Status: v1.4.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), steady/transient heat
@@ -14,7 +14,9 @@ entirely on commodity Linux cloud machines.
 > boundary conditions), time-harmonic eddy currents
 > (planar + axisymmetric in 2D; 3D with lowest-order Nedelec edge
 > elements in an A-V formulation), sequential EM-thermal (induction heating)
-> coupling with temperature-dependent conductivity, linear elasticity
+> coupling with temperature-dependent conductivity (in 3D the full
+> EM → transient-thermal → thermal-stress flagship chain with
+> explicit sigma(T) updates between EM re-solves, v1.4), linear elasticity
 > with thermal-stress coupling (2D plane stress/strain and 3D
 > tetrahedral, including a transient temperature-history stress
 > chain), 3D structural dynamics (consistent/lumped mass
@@ -106,8 +108,11 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.3** Cylinder at 2.5 kHz (R/δ = 2, L/D = 2) | v0.2 axisymmetric (infinite cylinder) | total-loss rel. diff +36.8 % — finite-length end effect + h ≈ δ skin resolution, documented in tests/test_em3d.py |
 | **v1.3** Low-frequency limits on the sphere | Theory: P ∝ f², P ∝ σ (δ ≫ a) | P(160)/P(40) = 15.1-16.0 (f² → 16), P(σ)/P(σ/10) = 9.88-9.98 (→ 10), ranges over two runs |
 | **v1.3** Gauge regularisation sensitivity | Loss at gauge_eps = 1e-5 vs 1e-7 | rel. change <= 7.7e-07 (two runs: 2.2e-16, 7.7e-07) |
+| **v1.4** 3D induction chain energy account | EM energy accumulated over the run vs discrete enthalpy gain of the adiabatic billet (an algebraic identity of the discrete chain when the transfer is conservative) | rel. err 3.3e-16 |
+| **v1.4** sigma(T) feedback, hot point | Surface ~340 C: frozen-sigma peak ΔT 382 K vs sigma(T) 322 K (hot skin turns transparent, deposition deepens); power 11.53 → 11.41 kW across the turnover | measured in tests/test_induction3d.py |
+| **v1.4** 3D chain vs 2D axisymmetric chain | Same billet and sigma(T) law, independent solvers: cold-power ratio 1.75 (3D end effect + skin resolution — the v1.3 band); mean-rise ratio 1.79 vs 1.82 from the power/volume expectation | −1.4 % deviation |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py && python3 tests/test_em3d.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py && python3 tests/test_unstructured3d.py && python3 tests/test_dynamics3d.py && python3 tests/test_em3d.py && python3 tests/test_induction3d.py`
 
 ## Layout
 
@@ -127,6 +132,10 @@ cloudfem/
     em3d.py    3D time-harmonic eddy currents: edge-element A-V
                formulation, background-field / current excitation,
                Joule heating for the EM → thermal chain (v1.3)
+    induction3d.py 3D induction-heating flagship chain: EM (v1.3)
+               → transient heat (v1.0) → thermal stress (v0.8)
+               with explicit sigma(T) updates and a discrete
+               energy account (v1.4)
     coupled.py sequential EM → thermal induction heating
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
@@ -143,7 +152,10 @@ examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
                unstructured_cylinder_3d.py (v1.1),
                transient_beam_3d.py (v1.2),
                eddy_current_3d.py (v1.3: 3D eddy currents in a
-               billet + EM → transient-heat chain)
+               billet + EM → transient-heat chain),
+               induction_heating_3d.py (v1.4: flagship full chain —
+               billet heated toward the Curie temperature with
+               sigma(T), power history and peak thermal stress)
 docs/          roadmap
 ```
 
@@ -295,6 +307,31 @@ docs/          roadmap
       boundary at finite distance ((a/L)^3 perturbation), direct
       sparse solve keeps edge counts in the tens of thousands,
       omega -> 0 magnetostatics out of scope
+- [x] v1.4: 3D induction-heating flagship chain
+      (physics/induction3d.py): v1.3 eddy currents → v1.0 transient
+      heat on the extracted billet submesh → v0.8 thermal stress
+      snapshots, driven as one sequential chain with explicit
+      sigma(T) updates (the 2D law sigma0/(1 + 0.004 (T - 20)),
+      re-solved every em_every heat steps, frozen inside each EM
+      interval; mu = mu0 throughout, the 2D chain's convention).
+      Validation (tests/test_induction3d.py): the discrete energy
+      account closes at 3.3e-16 (EM energy in vs enthalpy gain --
+      an identity when the cross-mesh transfer is conservative, so
+      any wiring error breaks it); cross-check against the
+      independent 2D axisymmetric chain at the same working point
+      (cold-power ratio 1.75 from the 3D end effect + h/delta ~ 1.55
+      skin resolution, mean-rise ratio within 1.4 % of the
+      power/volume expectation, pointwise ratios bracketing it);
+      sigma(T) feedback measured in two regimes (mild: power drifts
+      +0.3 % as sigma falls; hot: across the turnover the power
+      declines and the surface peak is tamed, 322 vs 382 K
+      frozen-sigma). Demo: R20 x L80 mm billet at 180 kA/m,
+      2.5 kHz, 12 s -- surface 755 C approaching the Curie
+      temperature, core 442 C, power 16.6 → 14.1 kW, peak von
+      Mises 469 MPa at t = 6 s. Limitations: mu constant (no
+      magnetic Curie transition), adiabatic billet surface,
+      explicit (first-order) sigma update, absolute powers inherit
+      the v1.3 h/delta error band
 
 ## Licence
 

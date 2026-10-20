@@ -4,15 +4,16 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.8.** 2D triangular P1 finite elements (structured +
+> **Status: v0.9.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D box
 > domains, steady/transient heat conduction, time-harmonic eddy currents
 > (planar + axisymmetric), sequential EM-thermal (induction heating)
 > coupling with temperature-dependent conductivity, linear elasticity
 > with thermal-stress coupling (2D plane stress/strain and 3D
-> tetrahedral), nonlinear magnetostatics with B-H saturation, and a
-> minimal browser Web UI (draw polygon → mesh → solve steady heat →
-> contour plot).
+> tetrahedral), 3D structural dynamics (consistent/lumped mass
+> matrices, modal analysis), nonlinear magnetostatics with B-H
+> saturation, and a minimal browser Web UI (draw polygon → mesh →
+> solve steady heat → contour plot).
 > Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
@@ -61,8 +62,13 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.8** Free-expansion cube, uniform heating ΔT = 50 | Analytical u = αΔT·x, σ = 0 | rel. err ≈ 1e-13 |
 | **v0.8** 3D elasticity convergence (manufactured sin(πx)) | Theory: P1 → O(h²) | measured 1.74 / 1.88 |
 | **v0.8** Heated steel cube demo (base clamped), ΔT_max = 222.5 °C | Bound E·α·ΔT_max = 534 MPa | peak von Mises 329.6 MPa < bound |
+| **v0.9** Tet mass matrix vs independent Gauss quadrature | Exact P1 integrals `V/20·(1+δᵢⱼ)` | rel. err 3.7e-17 |
+| **v0.9** Total mass conservation (consistent + lumped) | Analytical ρ·V, all 3 components | rel. err 3.5e-16 |
+| **v0.9** Free cube rigid-body modes (6) + M-orthonormality | λ₁₋₆ = 0, λ₇ > 0, ΦᵀMΦ = I | max ratio 6.1e-16, orth. err 6.7e-16 |
+| **v0.9** Cantilever beam f₁ (40×5×5 tet mesh) | Euler-Bernoulli 81.54 Hz | 86.93 Hz (+6.6 %, P1 overstiff, converges from above) |
+| **v0.9** Fixed-free rod, 1st longitudinal mode | `(1/4L)√(E/ρ)` = 1261.9 Hz | 1272.0 Hz (+0.80 %) |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py`
 
 ## Layout
 
@@ -76,10 +82,11 @@ cloudfem/
     coupled.py sequential EM → thermal induction heating
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
+    modal3d.py 3D structural dynamics: mass matrices + modal analysis
     thermomech.py sequential thermal → structural (thermal stress, 2D+3D)
 tests/         analytical validations (must stay green)
 examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
-               thermal_stress_3d.py (v0.8)
+               thermal_stress_3d.py (v0.8), modal_beam_3d.py (v0.9)
 docs/          roadmap
 ```
 
@@ -104,6 +111,15 @@ docs/          roadmap
       affine-exact ≈1e-14, constrained heating −EαΔT/(1−2ν) to
       2.0e-16, free expansion ≈1e-13, manufactured-solution
       convergence 1.74/1.88; heated-cube demo (base clamped)
+- [x] v0.9: 3D structural dynamics — consistent + lumped tet-P1 mass
+      matrices (exact integrals, Gauss-quadrature checked to 3.7e-17,
+      total mass conserved to 3.5e-16), modal analysis via
+      shift-invert sparse eigensolver at a slightly negative shift
+      (free bodies handled: six rigid modes with |λ|/λ₇ = 6.1e-16,
+      M-orthonormal shapes); validated: cantilever f₁ +6.6 % vs
+      Euler-Bernoulli (P1 overstiff, mesh sweep +29 % → +6.6 %),
+      fixed-free rod longitudinal f₁ +0.80 % vs (1/4L)√(E/ρ);
+      cantilever modal demo with mode-shape plots
 
 ## Licence
 

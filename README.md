@@ -4,14 +4,15 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.7.** 2D triangular P1 finite elements (structured +
+> **Status: v0.8.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D box
 > domains, steady/transient heat conduction, time-harmonic eddy currents
 > (planar + axisymmetric), sequential EM-thermal (induction heating)
 > coupling with temperature-dependent conductivity, linear elasticity
-> with thermal-stress coupling, nonlinear magnetostatics with B-H
-> saturation, and a minimal browser Web UI (draw polygon → mesh → solve
-> steady heat → contour plot).
+> with thermal-stress coupling (2D plane stress/strain and 3D
+> tetrahedral), nonlinear magnetostatics with B-H saturation, and a
+> minimal browser Web UI (draw polygon → mesh → solve steady heat →
+> contour plot).
 > Validated against analytical solutions. Roadmap below.
 
 ## Why this exists
@@ -55,8 +56,13 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.7** Tetra P1: affine solution on unit cube (linear exactness) | P1 reproduces affine T exactly | L2 err = 1.4e-15 |
 | **v0.7** Tetra P1: manufactured sin(πx)sin(πy)sin(πz), f = 3π²T | Theory: P1 → O(h²) | measured 1.72 / 1.86 |
 | **v0.7** 3D steel cube, uniform source, 0.1 m | slab bound Q·L²/8k = 25.0 °C | centre rise 11.18 °C < bound |
+| **v0.8** 3D uniaxial tension cube (surface traction) | Analytical σ_xx = 100 MPa, u = σx/E | rel. err ≈ 1e-14 (affine-exact) |
+| **v0.8** Fully constrained cube, uniform heating ΔT = 50 | Analytical `−EαΔT/(1−2ν)` = −300 MPa (hydrostatic) | rel. err 2.0e-16, shear ≈ 0, u ≈ 0 |
+| **v0.8** Free-expansion cube, uniform heating ΔT = 50 | Analytical u = αΔT·x, σ = 0 | rel. err ≈ 1e-13 |
+| **v0.8** 3D elasticity convergence (manufactured sin(πx)) | Theory: P1 → O(h²) | measured 1.74 / 1.88 |
+| **v0.8** Heated steel cube demo (base clamped), ΔT_max = 222.5 °C | Bound E·α·ΔT_max = 534 MPa | peak von Mises 329.6 MPa < bound |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py`
 
 ## Layout
 
@@ -69,9 +75,11 @@ cloudfem/
     em.py      time-harmonic eddy currents (A-formulation), Joule heating
     coupled.py sequential EM → thermal induction heating
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
-    thermomech.py sequential thermal → structural (thermal stress)
+    elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
+    thermomech.py sequential thermal → structural (thermal stress, 2D+3D)
 tests/         analytical validations (must stay green)
-examples/      induction_heating.py + output plots, heat_3d.py (v0.7)
+examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
+               thermal_stress_3d.py (v0.8)
 docs/          roadmap
 ```
 
@@ -90,6 +98,12 @@ docs/          roadmap
       subdivision), steady heat conduction, manufactured-solution
       convergence 1.72/1.86 (→ 2.0), affine exactness 1.4e-15,
       steel-cube demo with mid-plane slices + 3D scatter
+- [x] v0.8: 3D linear elasticity + thermal stress — tet P1 vector FEM
+      (body/surface-traction/thermal loads, von Mises), sequential
+      3D heat → structural coupling; validated: uniaxial tension
+      affine-exact ≈1e-14, constrained heating −EαΔT/(1−2ν) to
+      2.0e-16, free expansion ≈1e-13, manufactured-solution
+      convergence 1.74/1.88; heated-cube demo (base clamped)
 
 ## Licence
 

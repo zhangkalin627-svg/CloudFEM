@@ -136,8 +136,9 @@ def source_load_vector_elem(mesh, q_elem, weight=None):
 
 def element_to_nodal(mesh, q_elem):
     """Average element values to nodes."""
+    n_per = mesh.elements.shape[1]
     q_nodal = np.zeros(mesh.n_nodes)
     count = np.zeros(mesh.n_nodes)
-    np.add.at(q_nodal, mesh.elements.ravel(), np.repeat(q_elem, 3))
+    np.add.at(q_nodal, mesh.elements.ravel(), np.repeat(q_elem, n_per))
     np.add.at(count, mesh.elements.ravel(), 1)
     return q_nodal / np.maximum(count, 1)

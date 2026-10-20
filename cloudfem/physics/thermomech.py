@@ -13,6 +13,8 @@ from ..fem.timestep import element_to_nodal
 from .coupled import induction_heating
 from .elastic import (
     solve_elasticity, element_stress_strain, von_mises)
+from .elastic3d import (
+    solve_elasticity_3d, element_stress_strain_3d, von_mises_3d)
 
 
 def thermal_stress(mesh, T, E, nu, alpha, T_ref=0.0, plane="strain", bc=None):
@@ -40,6 +42,40 @@ def thermal_stress(mesh, T, E, nu, alpha, T_ref=0.0, plane="strain", bc=None):
     return {
         "ux": ux,
         "uy": uy,
+        "u_max": float(umag.max()),
+        "sig_elem": sig,
+        "eps_elem": eps,
+        "vm_elem": vm,
+        "vm_nodal": element_to_nodal(mesh, vm),
+        "vm_max": float(vm.max()),
+    }
+
+
+def thermal_stress_3d(mesh, T, E, nu, alpha, T_ref=0.0, bc=None):
+    """Compute 3D thermal stress from a nodal temperature field T.
+
+    Parameters
+    ----------
+    T : (N,) nodal temperature array (same mesh).
+    E, nu : Young's modulus, Poisson's ratio.
+    alpha : thermal expansion coefficient (1/K).
+    T_ref : stress-free reference temperature.
+    bc : displacement BCs, see elastic3d.apply_dirichlet_vec3.
+         For a free body under self-equilibrated thermal load, pin just
+         enough DOFs to remove rigid-body motion (reactions are ~0).
+
+    Returns dict with ux, uy, uz, sig_elem, eps_elem, vm_elem, vm_nodal.
+    """
+    ux, uy, uz = solve_elasticity_3d(mesh, E, nu, bc=bc,
+                                     T=T, alpha=alpha, T_ref=T_ref)
+    sig, eps = element_stress_strain_3d(mesh, (ux, uy, uz), E, nu,
+                                        T=T, alpha=alpha, T_ref=T_ref)
+    vm = von_mises_3d(sig)
+    umag = np.sqrt(ux ** 2 + uy ** 2 + uz ** 2)
+    return {
+        "ux": ux,
+        "uy": uy,
+        "uz": uz,
         "u_max": float(umag.max()),
         "sig_elem": sig,
         "eps_elem": eps,

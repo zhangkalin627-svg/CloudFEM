@@ -85,6 +85,52 @@ def thermal_stress_3d(mesh, T, E, nu, alpha, T_ref=0.0, bc=None):
     }
 
 
+def transient_thermal_stress_3d(mesh, times, T_history, E, nu, alpha,
+                                T_ref=0.0, bc=None):
+    """Transient thermal-stress chain: stress history from T(x, t).
+
+    Runs :func:`thermal_stress_3d` at every snapshot of a transient
+    temperature history (e.g. ``T_history`` from
+    :func:`cloudfem.fem.tet_heat.transient_heat_tet`, on the same
+    mesh) and summarises the peak-stress instant. One-way coupling,
+    as in thermal_stress_3d: each snapshot is an independent static
+    solve with that instant's temperature field.
+
+    Parameters
+    ----------
+    times : (S,) snapshot times.
+    T_history : (S, N) nodal temperature at each snapshot.
+    E, nu, alpha, T_ref, bc : as in thermal_stress_3d.
+
+    Returns dict with times, history (list of thermal_stress_3d result
+    dicts, one per snapshot), vm_max and u_max (S,) histories,
+    peak_index, peak_time, peak_vm_max, and peak (the
+    thermal_stress_3d dict at the peak instant).
+    """
+    times = np.asarray(times, dtype=float)
+    T_history = np.asarray(T_history, dtype=float)
+    if T_history.shape != (len(times), mesh.n_nodes):
+        raise ValueError(
+            f"T_history shape {T_history.shape} does not match "
+            f"({len(times)}, {mesh.n_nodes})")
+    history = [thermal_stress_3d(mesh, T_history[i], E, nu, alpha,
+                                 T_ref=T_ref, bc=bc)
+               for i in range(len(times))]
+    vm_max = np.array([h["vm_max"] for h in history])
+    u_max = np.array([h["u_max"] for h in history])
+    peak = int(np.argmax(vm_max))
+    return {
+        "times": times,
+        "history": history,
+        "vm_max": vm_max,
+        "u_max": u_max,
+        "peak_index": peak,
+        "peak_time": float(times[peak]),
+        "peak_vm_max": float(vm_max[peak]),
+        "peak": history[peak],
+    }
+
+
 def induction_thermomech(mesh, sigma, omega, J_s=0.0, nu=None,
                          k_th=1.0, rho_cp=1.0, bc_em=None, bc_th=None,
                          t_end=1.0, dt=0.01, T0=0.0, depth=1.0,

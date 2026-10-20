@@ -4,13 +4,17 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v0.9.** 2D triangular P1 finite elements (structured +
+> **Status: v1.0.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D box
-> domains, steady/transient heat conduction, time-harmonic eddy currents
+> domains, steady/transient heat conduction (2D and 3D; the 3D
+> transient solver uses a consistent capacity matrix with
+> theta-method time integration and Dirichlet/Neumann/Robin
+> boundary conditions), time-harmonic eddy currents
 > (planar + axisymmetric), sequential EM-thermal (induction heating)
 > coupling with temperature-dependent conductivity, linear elasticity
 > with thermal-stress coupling (2D plane stress/strain and 3D
-> tetrahedral), 3D structural dynamics (consistent/lumped mass
+> tetrahedral, including a transient temperature-history stress
+> chain), 3D structural dynamics (consistent/lumped mass
 > matrices, modal analysis), nonlinear magnetostatics with B-H
 > saturation, and a minimal browser Web UI (draw polygon → mesh →
 > solve steady heat → contour plot).
@@ -67,15 +71,25 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v0.9** Free cube rigid-body modes (6) + M-orthonormality | λ₁₋₆ = 0, λ₇ > 0, ΦᵀMΦ = I | max ratio 6.1e-16, orth. err 6.7e-16 |
 | **v0.9** Cantilever beam f₁ (40×5×5 tet mesh) | Euler-Bernoulli 81.54 Hz | 86.93 Hz (+6.6 %, P1 overstiff, converges from above) |
 | **v0.9** Fixed-free rod, 1st longitudinal mode | `(1/4L)√(E/ρ)` = 1261.9 Hz | 1272.0 Hz (+0.80 %) |
+| **v1.0** Tet capacity matrix total + SPD | Analytical `ρcₚ·V`, exact P1 integrals | rel. err 1.5e-16, min eig > 0 |
+| **v1.0** 1D slab transient (both faces at Ts) | Eigenfunction series, Fo = 0.05–0.3 | max rel. err BE 5.2e-3, CN 8.3e-4 |
+| **v1.0** Steady-state limit of transient solver | v0.7 steady solver, same cube + source | rel. diff 9.8e-12 |
+| **v1.0** Robin steady state, 1D bar | Analytical `T∞·Bi·(x/L)/(1+Bi)` | rel. diff 1.2e-11 |
+| **v1.0** Neumann energy balance (uniform flux, all faces) | `E(t) = E₀ + q·A·t`, mean T(1) = 28 exactly | drift 1.3e-14 (BE + CN) |
+| **v1.0** Adiabatic relaxation: energy + max principle | Energy conserved; bounds exact for dt ≥ h²/(6α) | drift ≤ 2.6e-15; undershoot ≤ 3.1 K at dt = h²/(6α)/2 (stated 5 K tol.) |
+| **v1.0** Temporal convergence order (manufactured decay) | Theory: BE O(Δt), CN O(Δt²) (step-halving differences) | measured BE 0.91 / 0.96, CN 1.99 / 2.00 |
+| **v1.0** Transient chain: uniform source, fully constrained | `−EαΔT(t)/(1−2ν)`, T(t) = T₀ + Qt/ρcₚ exact | stress rel. err ≤ 5.7e-14, von Mises ≈ 0 |
+| **v1.0** Quench demo (steel cube, oil, free body) | Peak stress at intermediate t, < E·α·ΔT scale 1980 MPa | peak von Mises 365.2 MPa at t = 9.0 s, decays to 107 MPa |
 
-Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py`
+Run all: `python3 tests/test_validation.py && python3 tests/test_axi_validation.py && python3 tests/test_unstructured.py && python3 tests/test_elastic.py && python3 tests/test_tet.py && python3 tests/test_elastic3d.py && python3 tests/test_modal3d.py && python3 tests/test_transient3d.py`
 
 ## Layout
 
 ```
 cloudfem/
   mesh/        triangular + tetrahedral mesh generation, refinement
-  fem/         P1 assembly (real + complex), implicit-Euler time stepper
+  fem/         P1 assembly (real + complex), implicit-Euler time stepper,
+               tet_heat.py 3D transient heat (theta method, v1.0)
   physics/
     heat.py    steady / transient conduction
     em.py      time-harmonic eddy currents (A-formulation), Joule heating
@@ -83,10 +97,12 @@ cloudfem/
     elastic.py linear elasticity (plane stress/strain), P1 vector FEM
     elastic3d.py 3D linear elasticity + thermal stress, tet P1 FEM
     modal3d.py 3D structural dynamics: mass matrices + modal analysis
-    thermomech.py sequential thermal → structural (thermal stress, 2D+3D)
+    thermomech.py sequential thermal → structural (thermal stress, 2D+3D,
+               transient 3D chain with peak summary, v1.0)
 tests/         analytical validations (must stay green)
 examples/      induction_heating.py + output plots, heat_3d.py (v0.7),
-               thermal_stress_3d.py (v0.8), modal_beam_3d.py (v0.9)
+               thermal_stress_3d.py (v0.8), modal_beam_3d.py (v0.9),
+               transient_thermomech_3d.py (v1.0)
 docs/          roadmap
 ```
 
@@ -120,6 +136,29 @@ docs/          roadmap
       Euler-Bernoulli (P1 overstiff, mesh sweep +29 % → +6.6 %),
       fixed-free rod longitudinal f₁ +0.80 % vs (1/4L)√(E/ρ);
       cantilever modal demo with mode-shape plots
+- [x] v1.0: 3D transient heat conduction + transient thermal-stress
+      chain (milestone) — consistent tet-P1 heat-capacity matrix
+      (exact integrals, total heat ρcₚ·V to 1.5e-16, SPD), theta-method
+      time integration (implicit Euler + Crank–Nicolson, both
+      A-stable, system matrix LU-factorised once per run) with
+      time-constant Dirichlet / Neumann (inward flux) / Robin
+      (convection) boundary conditions in fem/tet_heat.py;
+      transient_thermal_stress_3d chains a temperature history
+      through the v0.8 stress solver and summarises the peak-stress
+      instant. Validated: 1D-slab eigenfunction series (BE ≤ 5.2e-3,
+      CN ≤ 8.3e-4), steady-state limit vs the v0.7 solver (9.8e-12),
+      Robin 1D steady profile (1.2e-11), Neumann energy balance
+      (drift 1.3e-14), adiabatic energy conservation (≤ 2.6e-15)
+      with the consistent-mass maximum principle characterised
+      (exact for dt ≥ h²/(6α); ≤ 3.1 K undershoot at half that step
+      on a 100 K range), temporal orders BE 0.91/0.96 and CN
+      1.99/2.00 by step-halving differences, and the coupled chain
+      against −EαΔT(t)/(1−2ν) with T(t) = T₀ + Qt/ρcₚ exact
+      (≤ 5.7e-14). Quench demo: 50 mm steel cube, oil convection,
+      free body — peak von Mises 365.2 MPa at t = 9.0 s decaying to
+      107 MPa as the cube homogenises; the early consistent-mass
+      surface overshoot (~12 K on an 825 K jump) is documented in
+      the demo, not hidden
 
 ## Licence
 

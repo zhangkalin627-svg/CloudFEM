@@ -4,14 +4,15 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.6.** 2D triangular P1 finite elements (structured +
+> **Status: v1.7.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), plus second-order
 > Tet10 (10-node) tetrahedral elements for steady/transient heat
-> conduction (v1.6: Neumann/Robin boundary terms) and 3D linear
+> conduction (v1.6: Neumann/Robin boundary terms), 3D linear
 > elasticity (v1.5; higher-order accuracy
-> at equal mesh size — see the roadmap entry), steady/transient heat
+> at equal mesh size — see the roadmap entry) and 3D time-harmonic
+> eddy currents (v1.7; nodal A-V formulation), steady/transient heat
 > conduction (2D and 3D; the 3D
 > transient solver uses a consistent capacity matrix with
 > theta-method time integration and Dirichlet/Neumann/Robin
@@ -120,6 +121,7 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.5** Tet10 cantilever (BIG-M6 geometry, full model) | Euler-Bernoulli / Timoshenko tip deflection | (50, 2, 4) mesh, 2400 tets: −0.033 % vs EB, −0.81 % vs Timoshenko; Tet4 (100, 4, 8) at the same 4545 nodes: −5.95 % vs EB |
 | **v1.5** Tet10 transient heat | Cube cooling vs product-of-slabs series; adiabatic heat conservation; temporal orders (v1.0 protocol) | centre err −2.2e-03; drift 6.4e-16; BE 0.91/0.95, CN 1.94/2.38 |
 | **v1.6** Tet10 transient Neumann/Robin BCs | Adiabatic box + one-face heat flux: energy-balance drift; slab vs analytic (2/3)x Robin steady profile; max-principle spot check | Neumann drift 3.553e-15 / 1.561e-15 / 1.295e-15 (const / time-varying / space-varying); Robin steady inf-err 2.530e-08 (Tet4 2.404e-08); CN sub-threshold overshoot +2.240e-03 as in v1.0 |
+| **v1.7** Tet10 nodal A-V 3D time-harmonic eddy current | Manufactured-solution convergence; conducting sphere vs spherical-Bessel analytic loss; D1 cylinder vs axisymmetric reference; power reconciliation | MMS L2(A) rel err 2.362e-01 / 4.102e-02 / 2.547e-02, orders 2.53 / 2.14 (below scalar-P2 3.0 — known nodal curl-curl suboptimality); sphere P err −13.61 % (a/δ = 0.5) / −3.04 % (a/δ = 3.02 skin-dominated); D1 cylinder (h/δ = 0.22) 3D vs axi −12.25 % (< 15 % criterion); power closure 5.59e-03 / 2.55e-03, in tests/test_tet10_em.py |
 | **BIG-M6** Cantilever beam static tip deflection (L/H = 10, end traction, symmetry half model, 4 mesh levels + Richardson extrapolation) | Euler–Bernoulli `PL³/(3EI)` = 0.4000 mm | −6.09 % / −1.72 % / −0.77 % / −0.52 % (finest < 1 % criterion); vs Timoshenko −1.29 % at finest (shear share 0.78 %); Richardson limit 0.3997–0.4010 mm — between EB and Timoshenko, residual 0.5–0.8 % gap is a 3D-vs-beam model difference, not mesh error, in tests/test_cantilever_benchmark.py |
 | **BIG-M7** 1-D rod thermal stress (real heat -> thermal-stress chain on one tet mesh, 4 mesh levels) | Closed form `sigma = -E alpha <dT>` = -240.00 MPa | slab-mean sigma_xx err 3.233 % / 2.175 % / 1.948 % / 1.664 % (finest < 2 % criterion); end reactions +/-24.40 kN vs 24.00 kN analytic, in tests/test_bench_thermal_stress.py |
 | **BIG-M8** Axisymmetric eddy current: solid cylinder in uniform axial AC field (a/delta = 2.51, 5 mesh levels) | Bessel closed form, three independent routes agree < 1e-8: P/L = 79.8105 W/m | FEM P/L err +4.894 % -> +0.520 % (finest < 5 % criterion), in tests/test_bench_axi_eddy.py |
@@ -398,6 +400,33 @@ docs/          roadmap
       Limitations: time-varying Robin not supported; steady
       solver still Dirichlet-only; maximum principle not
       unconditional with the consistent mass matrix (as in v1.0).
+- [x] v1.7: Tet10 nodal A-V 3D time-harmonic eddy-current solver
+      (cloudfem/physics/em3d_tet10.py): 10-node quadratic tets,
+      A-V formulation `curl(1/μ curl A) + iωσA + σ∇V = J_s` with
+      the continuity equation `∇·(iωσ(A+∇V)) = 0` as the second
+      block (avoids explicit Coulomb gauge in air); exact element
+      integrals on affine tets (5-point Keast, degree-3 exact +
+      closed-form P2 mass); air-region gauge via gauge_eps
+      artificial conductivity in the mass term only (physical
+      output always uses true σ); Joule power exact for the
+      discrete E field; source complex power `S = ½∫J_s·E* dV`
+      gives the coil terminal impedance `Z = 2S/|I|²`. Validation
+      (tests/test_tet10_em.py): manufactured-solution
+      convergence orders 2.53 / 2.14 (below scalar-P2 3.0 — known
+      suboptimality of the nodal curl-curl operator, documented);
+      conducting sphere vs spherical-Bessel analytic: power
+      −13.61 % (a/δ = 0.5) / −3.04 % (a/δ = 3.02, skin-dominated);
+      D1 cylinder (h/δ = 0.22, R/δ = 0.4) 3D vs axisymmetric
+      reference −12.25 % (< 15 % criterion); power reconciliation
+      (moment identity vs independent quadrature) 5.59e-03,
+      EM → heat energy link 2.55e-03; regression trio rc = 0.
+      Limitations: D1 coil case at h/δ = 1.12 is only a wide-band
+      consistency check (+175.76 %, under-resolved skin; a finer
+      probe at h/δ = 0.84 gives +249.8 % non-monotonic —
+      pre-asymptotic at this density), so the tight 3D-vs-axi coil
+      benchmark needs h/δ ≪ 1 (follow-up work); linear materials,
+      single-frequency phasor solve, sparse direct solver
+      (~4 DOF per mesh node); affine element maps only.
 
 ## Licence
 

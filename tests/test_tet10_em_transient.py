@@ -103,8 +103,11 @@ def _sinusoidal_phasor_error(mesh, dt, freq=50.0, t_end=4.0):
         history=(t_end - T, t_end))
     th, ah = out["t_hist"], out["a_hist"]
     w = np.exp(-1j * omega * th)
-    # numpy 2.x removed np.trapz (renamed to np.trapezoid); keep 1.x compatible
-    _trapezoid = getattr(np, "trapezoid", np.trapz)
+    # numpy 2.x removed np.trapz (renamed to np.trapezoid); keep 1.x compatible.
+    # NOTE: do NOT use getattr(np, "trapezoid", np.trapz) — the default arg is
+    # evaluated first and raises AttributeError on numpy 2.x where np.trapz
+    # no longer exists (butler rw-ci caught this on ce4ff18, 2026-10-22).
+    _trapezoid = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
     a_num = (2.0 / T) * _trapezoid(ah * w[:, None], th, axis=0)
     a_ph, _ = solve_eddy_current_tet10(
         mesh, sigma=sigma3, omega=omega, boundary=NAMES,

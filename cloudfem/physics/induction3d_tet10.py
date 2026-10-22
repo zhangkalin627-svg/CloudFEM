@@ -476,6 +476,10 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     cp_slope = float(law_kwargs.pop("cp_slope", 0.0))
     cp_peak_h = float(law_kwargs.pop("cp_peak_h", 0.0))
     cp_peak_w = float(law_kwargs.pop("cp_peak_w", 25.0))
+    if cp_peak_h != 0.0 and cp_peak_w <= 0.0:
+        raise ValueError(
+            "cp_peak_w must be positive when cp_peak_h != 0 "
+            f"(got cp_peak_h={cp_peak_h}, cp_peak_w={cp_peak_w})")
     cp_varying = (cp_slope != 0.0) or (cp_peak_h != 0.0
                                       and cp_peak_w > 0.0)
 

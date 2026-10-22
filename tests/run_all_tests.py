@@ -111,6 +111,7 @@ CLASSIFICATIONS: dict[str, Classification] = {
     "test_inductance.py": Classification(Tier.FULL, "依赖完整 D1 Tet10 相量解"),
     "test_tet10_em_nonlinear.py": Classification(Tier.FULL, "非线性 Picard 长跑"),
     "test_tet10_em_thermal_coupled.py": Classification(Tier.FULL, "v2.0 热-电磁耦合全程，最重档"),
+    "test_tet10_cp_enthalpy.py": Classification(Tier.FULL, "v2.1 cp(T) 焓峰，同 v2.0 小网格耦合解"),
     "test_cantilever_benchmark.py": Classification(Tier.FULL, "L4 大自由度直接解"),
     "test_bench_induction_chain.py": Classification(Tier.FULL, "60 s 瞬态且每步重解 EM"),
     "test_bench_nonlinear_bh.py": Classification(Tier.FULL, "瞬态 Picard 长跑"),

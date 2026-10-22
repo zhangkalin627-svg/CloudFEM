@@ -103,7 +103,9 @@ def _sinusoidal_phasor_error(mesh, dt, freq=50.0, t_end=4.0):
         history=(t_end - T, t_end))
     th, ah = out["t_hist"], out["a_hist"]
     w = np.exp(-1j * omega * th)
-    a_num = (2.0 / T) * np.trapz(ah * w[:, None], th, axis=0)
+    # numpy 2.x removed np.trapz (renamed to np.trapezoid); keep 1.x compatible
+    _trapezoid = getattr(np, "trapezoid", np.trapz)
+    a_num = (2.0 / T) * _trapezoid(ah * w[:, None], th, axis=0)
     a_ph, _ = solve_eddy_current_tet10(
         mesh, sigma=sigma3, omega=omega, boundary=NAMES,
         J_s=lambda x, y, z: tuple(-1j * c for c in Js3(x, y, z)))

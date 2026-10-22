@@ -529,6 +529,13 @@ docs/          roadmap
       time-convergence: em_every=1 family C1 vs C3 T +0.51%/P +0.76%,
       t_cross |Δ|=0.005s ≤ 0.01s)
       — scope: docs/v2.0_scope.md; report: examples/convergence/CONVERGENCE_REPORT.md
+- [ ] v2.1: cp(T) 居里焓峰（候选，未合 main；分支 v2.1-cp-enthalpy）——
+      体积热容 = 基线 + 居里高斯焓峰，焓形式能量对账；峰关闭逐位复现 v2.0。
+      已知限制：默认工况（em_every=5，EM 间隔 0.1s）下温度在一个 EM 间隔内
+      越过居里窗口，焓峰不生效；需 em_every=1（或单区间温升 ≲ cp_peak_w）
+      峰才起作用。未写明该限制前不称功能完成；本轮仅代码质量与数值行为
+      核查，非物理验收。
+      — scope: docs/v2.1_scope.md
 
 ## Licence
 

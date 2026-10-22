@@ -39,13 +39,24 @@ measured material data:
                    NOT the linear-resistivity law
                    induction3d.steel_sigma_of_T -- the two laws live
                    in different drivers and must not be mixed.
-    thermal        k = 30 W/(m K) and rho_cp = 7850 * 480
-                   = 3.768e6 J/(m^3 K), both constant.  M10's
-                   cp(T) baseline slope and Curie Gaussian enthalpy
-                   peak are NOT carried over (documented in
-                   docs/v2.0_scope.md), so Curie-crossing *times*
-                   are not quantitatively comparable to BIG-M10;
-                   only the mechanism and directions are.
+    thermal        k = 30 W/(m K) constant; volumetric heat capacity
+                   c(T) = rho_cp * (1 + cp_slope * (T - 20))
+                   + cp_peak_h * exp(-(T - t_curie)^2/(2*cp_peak_w^2))
+                   [J/(m^3 K)] (:func:`steel_cp_T`).  Defaults
+                   (cp_slope = 0, cp_peak_h = 0) give the constant
+                   rho_cp = 7850 * 480 = 3.768e6 J/(m^3 K), i.e. the
+                   v2.0 thermal law bitwise.  With the peak enabled
+                   the Gaussian centred at t_curie is the documented
+                   analytic model of the magnetic-transition
+                   enthalpy (model assumption, not measured data);
+                   Curie-crossing *times* then include the
+                   transition-enthalpy delay.  The capacity matrix is
+                   rebuilt from the element temperatures at each EM
+                   interval start and frozen over the interval (the
+                   same staggered granularity as sigma(T)/mu_r(T));
+                   the per-interval discrete identity
+                   ones^T C_iv dT_iv = P_iv * dt_iv holds to linear
+                   solver precision (ones^T K = 0, adiabatic).
 
 Coupling (loosely coupled / staggered, the BIG-M10 case-B protocol):
 the EM problem is re-solved every ``em_every`` heat steps with the
@@ -63,9 +74,12 @@ adiabatic (the same short-time assumption as BIG-M10 case B and the
 v1.4 chain: no heat loss to air/coil).  The element Joule source is
 assembled exactly as an element-constant load (the assemble_tet10
 f-assembly with f == Q_e), so with the adiabatic boundary the
-discrete identity ones^T C dT = dt * P holds per heat step
-(ones^T K = 0) and the accumulated EM energy matches the enthalpy
-gain to linear-solver precision; the driver reports both sides.
+discrete identity ones^T C_iv dT = dt * P holds per EM interval
+(ones^T K = 0; C_iv frozen per interval, constant-C v2.0 as the
+special case) and the accumulated EM energy matches the discrete
+enthalpy gain to linear-solver precision; the driver reports both
+sides plus the analytic-enthalpy diagnostic
+ones^T M_1 (H(T) - H(T0)) with H from :func:`steel_enthalpy_T`.
 
 Limitations: secant / effective-mu fundamental-harmonic phasor
 approximation as in v1.9 (no harmonics, no hysteresis); constant
@@ -77,6 +91,7 @@ once per Picard iteration).
 
 import numpy as np
 import scipy.sparse.linalg as spla
+from scipy.special import erf
 from scipy.spatial import cKDTree
 
 from ..fem.tet10 import (assemble_mass_tet10, assemble_tet10,
@@ -90,6 +105,7 @@ from .em3d_tet10 import (_assemble_curl_curl_tet10_nu,
 
 __all__ = [
     "curie_step_T", "steel_sigma_T", "bh_secant_mu_r_HT",
+    "steel_cp_T", "steel_enthalpy_T",
     "solve_eddy_current_nonlinear_tet10_T",
     "induction_heating_3d_tet10",
     "TC_CURIE", "W_STEP_CURIE", "SIG_HI", "SIG_LO", "T_SIG", "W_SIG",
@@ -145,6 +161,56 @@ def bh_secant_mu_r_HT(Hmag, T, bsat=1.9, mu_mag0=200.0,
     return (1.0 + (bh_secant_mu_r(Hmag, bsat=bsat, mu_mag0=mu_mag0)
                    - 1.0) * curie_step_T(T, t_curie=t_curie,
                                          w_step=w_step))
+
+
+def steel_cp_T(T, rho_cp=3.768e6, cp_slope=0.0, t_ref=20.0,
+               cp_peak_h=0.0, cp_peak_w=25.0, t_curie=TC_CURIE):
+    """Volumetric heat capacity [J/(m^3 K)] with Curie enthalpy peak.
+
+    c(T) = rho_cp * (1 + cp_slope * (T - t_ref))
+           + cp_peak_h * exp(-(T - t_curie)^2 / (2 * cp_peak_w^2))
+
+    The Gaussian peak centred at ``t_curie`` is the documented
+    analytic model of the magnetic-transition enthalpy (its area
+    ``cp_peak_h * cp_peak_w * sqrt(2*pi)`` is the transition
+    enthalpy per unit volume); peak height/width are model
+    assumptions, NOT measured data.  Defaults (cp_slope = 0,
+    cp_peak_h = 0) give the constant ``rho_cp``, i.e. the v2.0
+    thermal law bitwise.  Scalar or array T [degC].
+    """
+    T = np.asarray(T, dtype=float)
+    c = float(rho_cp) * (1.0 + float(cp_slope) * (T - float(t_ref)))
+    h = float(cp_peak_h)
+    w = float(cp_peak_w)
+    if h != 0.0 and w > 0.0:
+        z = (T - float(t_curie)) / w
+        c = c + h * np.exp(-0.5 * z * z)
+    return c
+
+
+def steel_enthalpy_T(T, t_ref=20.0, rho_cp=3.768e6, cp_slope=0.0,
+                     cp_peak_h=0.0, cp_peak_w=25.0,
+                     t_curie=TC_CURIE):
+    """Volumetric enthalpy [J/m^3] relative to ``t_ref``.
+
+    H(T) = integral_{t_ref}^{T} c(s) ds with c(s) from
+    :func:`steel_cp_T`, in closed form: the baseline integrates to
+    ``rho_cp * ((T - t_ref) + cp_slope * (T - t_ref)^2 / 2)`` and the
+    Gaussian peak to ``cp_peak_h * cp_peak_w * sqrt(pi/2) *
+    (erf((T - t_curie)/(w*sqrt(2))) - erf((t_ref - t_curie)/
+    (w*sqrt(2))))``.  Scalar or array T [degC].
+    """
+    T = np.asarray(T, dtype=float)
+    dT = T - float(t_ref)
+    H = float(rho_cp) * (dT + 0.5 * float(cp_slope) * dT * dT)
+    h = float(cp_peak_h)
+    w = float(cp_peak_w)
+    if h != 0.0 and w > 0.0:
+        sq2 = np.sqrt(2.0)
+        arg_T = (T - float(t_curie)) / (w * sq2)
+        arg_ref = (float(t_ref) - float(t_curie)) / (w * sq2)
+        H = H + h * w * np.sqrt(np.pi / 2.0) * (erf(arg_T) - erf(arg_ref))
+    return H
 
 
 def _centroid_lookup(centroids, values):
@@ -355,7 +421,16 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     and the energy-accounting convention).  ``law_kwargs`` forwards
     the
     material-law parameters (bsat, mu_mag0, t_curie, w_step,
-    sig_hi, sig_lo, t_sig, w_sig) to the EM solver.
+    sig_hi, sig_lo, t_sig, w_sig) to the EM solver, and carries
+    the v2.1 cp(T) law parameters (cp_slope, cp_peak_h,
+    cp_peak_w; popped before the EM call): volumetric heat
+    capacity c(T) = rho_cp * (1 + cp_slope * (T - 20))
+    + cp_peak_h * exp(-(T - t_curie)^2/(2*cp_peak_w^2))
+    [J/(m^3 K)] (:func:`steel_cp_T`).  Defaults (cp_slope = 0,
+    cp_peak_h = 0) give the constant rho_cp, i.e. the v2.0
+    thermal law bitwise; with the peak enabled the capacity
+    matrix is rebuilt from the element temperatures at each EM
+    interval start and frozen over the interval.
 
     Parameters (beyond the EM solver's)
     ----------
@@ -377,8 +452,12 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     ``history`` (per-interval records: t_end, P, em_iterations,
     em_converged, stagger_passes, T_elem_mean/max, frac_above_Tc,
     mu_r_iron_mean/min), ``E_in`` / ``enthalpy_gain`` /
-    ``balance_rel`` (energy account), ``submesh``, ``iron_idx``,
-    ``used_nodes`` and the final ``a``, ``v``, ``em_info``.
+    ``balance_rel`` (energy account; with cp(T) enabled the
+    account is the discrete enthalpy form sum_iv ones^T C_iv
+    dT_iv, and ``enthalpy_gain_phys`` carries the analytic
+    enthalpy diagnostic), ``cp_varying``, ``submesh``,
+    ``iron_idx``, ``used_nodes`` and the final ``a``, ``v``,
+    ``em_info``.
     """
     if iron is None:
         raise ValueError("iron predicate is required (it defines "
@@ -392,38 +471,77 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         raise ValueError("stagger_iter must be >= 1")
     theta = _THETA_HEAT[method]
 
+    t_curie = float(law_kwargs.get("t_curie", TC_CURIE))
+    # v2.1 cp(T) law parameters (popped: not forwarded to the EM solver).
+    cp_slope = float(law_kwargs.pop("cp_slope", 0.0))
+    cp_peak_h = float(law_kwargs.pop("cp_peak_h", 0.0))
+    cp_peak_w = float(law_kwargs.pop("cp_peak_w", 25.0))
+    cp_varying = (cp_slope != 0.0) or (cp_peak_h != 0.0
+                                      and cp_peak_w > 0.0)
+
     iron_mask, _ = _iron_mask(mesh, iron)
     sub, used_nodes, iron_idx = _extract_submesh_tet10(mesh, iron_mask)
     vols_sub = sub.element_volumes()
 
-    C = assemble_mass_tet10(sub, rho_cp=rho_cp)
     C1 = assemble_mass_tet10(sub, rho_cp=1.0)
     K_th, _ = assemble_tet10(sub, k=k_th, f=0.0)
+    ones_sub = np.ones(sub.n_nodes)
 
     n_steps = int(np.ceil(t_end / dt - 1e-12))
     if n_steps < 1:
         raise ValueError("t_end must be positive")
     h_step = t_end / n_steps
-    A_sys = C + theta * h_step * K_th
-    R_sys = C - (1.0 - theta) * h_step * K_th
-    solve = spla.factorized(A_sys.tocsc())
 
-    def advance(T_start, F_Q, n_sub):
-        T = T_start.copy()
-        for _ in range(n_sub):
-            T = np.asarray(solve(R_sys @ T + h_step * F_Q)).ravel()
-        return T
+    def _make_solver(C_mat):
+        """Factorized theta-stepper for one capacity matrix.
+
+        Identical operations to the v2.0 inline code; the closure
+        is rebuilt per EM interval when cp(T) varies.
+        """
+        A_sys = C_mat + theta * h_step * K_th
+        R_sys = C_mat - (1.0 - theta) * h_step * K_th
+        solve = spla.factorized(A_sys.tocsc())
+
+        def advance(T_start, F_Q, n_sub):
+            T = T_start.copy()
+            for _ in range(n_sub):
+                T = np.asarray(solve(R_sys @ T + h_step * F_Q)).ravel()
+            return T
+
+        return advance
 
     def elem_temps(T_nodes):
         return T_nodes[sub.elements].mean(axis=1)
 
-    t_curie = float(law_kwargs.get("t_curie", TC_CURIE))
+    def _capacity_matrix(T_nodes):
+        """Capacity matrix from element temperatures (v2.1).
+
+        Element-level (centroid) granularity, the same convention as
+        sigma(T)/mu_r(T) in the EM solver.
+        """
+        sub_cen = sub.nodes[sub.elements[:, :4]].mean(axis=1)
+        c_e = steel_cp_T(elem_temps(T_nodes), rho_cp=rho_cp,
+                         cp_slope=cp_slope, cp_peak_h=cp_peak_h,
+                         cp_peak_w=cp_peak_w, t_curie=t_curie)
+        return assemble_mass_tet10(
+            sub, rho_cp=_centroid_lookup(sub_cen, c_e))
+
+    if not cp_varying:
+        # v2.0 path: constant capacity matrix, factorized once.
+        # Bitwise the v2.0 driver when cp_slope == 0 and the peak is
+        # off (steel_cp_T reduces to the constant rho_cp exactly).
+        C_const = assemble_mass_tet10(sub, rho_cp=rho_cp)
+        advance = _make_solver(C_const)
+    else:
+        C_const = None
+        advance = None  # rebuilt per EM interval below
     T = np.full(sub.n_nodes, float(T0))
     times = [0.0]
     T_hist = [T.copy()]
     T_elem_hist = [elem_temps(T)]
     history = []
     E_in = 0.0
+    enthalpy_gain_disc = 0.0  # v2.1: sum of ones^T C_iv dT_iv
     nu_warm = None
     a = v = em_info = None
 
@@ -431,6 +549,15 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     for iv in range(n_intervals):
         n_sub = min(em_every, n_steps - iv * em_every)
         T_start = T.copy()
+        if cp_varying:
+            # v2.1: capacity matrix from the interval-start
+            # temperatures, frozen over the interval (staggered
+            # granularity, as sigma(T)/mu_r(T)).
+            C_iv = _capacity_matrix(T_start)
+            advance_iv = _make_solver(C_iv)
+        else:
+            C_iv = C_const
+            advance_iv = advance
         T_est = T_start.copy()
         T_trial = None
         dT_stagger = None
@@ -445,7 +572,7 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
                 nu_init=nu_warm, **law_kwargs)
             nu_warm = em_info["nu_elem"]
             F_Q = _element_source_load(sub, em_info["Q_elem"][iron_idx])
-            T_new = advance(T_start, F_Q, n_sub)
+            T_new = advance_iv(T_start, F_Q, n_sub)
             if T_trial is not None:
                 dT_stagger = float(np.max(np.abs(T_new - T_trial)))
             T_trial = T_new
@@ -456,6 +583,11 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         T = T_trial
         P_used = float(em_info["P"][-1])
         E_in += P_used * (n_sub * h_step)
+        if cp_varying:
+            # Discrete enthalpy increment of this interval:
+            # ones^T C_iv (T_end - T_start) == P_iv * dt_iv exactly
+            # (ones^T K = 0), to linear-solver precision.
+            enthalpy_gain_disc += float(ones_sub @ (C_iv @ (T - T_start)))
         Te = elem_temps(T)
         mu_iron = em_info["mu_r_elem"][iron_idx]
         history.append({
@@ -477,12 +609,26 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         T_hist.append(T.copy())
         T_elem_hist.append(Te.copy())
 
-    enthalpy_gain = float(rho_cp * (np.ones(sub.n_nodes)
-                                    @ C1 @ (T - float(T0))))
+    if not cp_varying:
+        # v2.0 energy account, verbatim.
+        enthalpy_gain = float(rho_cp * (ones_sub @ C1 @ (T - float(T0))))
+        enthalpy_gain_phys = enthalpy_gain
+    else:
+        # v2.1 enthalpy-form account: the discrete identity
+        # sum_iv ones^T C_iv dT_iv == E_in, to solver precision.
+        # The analytic-enthalpy diagnostic is reported separately;
+        # it differs by the interval-freezing (method) error.
+        enthalpy_gain = enthalpy_gain_disc
+        H_end = steel_enthalpy_T(T, t_ref=float(T0), rho_cp=rho_cp,
+                                 cp_slope=cp_slope, cp_peak_h=cp_peak_h,
+                                 cp_peak_w=cp_peak_w, t_curie=t_curie)
+        enthalpy_gain_phys = float(ones_sub @ (C1 @ H_end))
     balance_rel = (E_in - enthalpy_gain) / E_in if E_in > 0 else 0.0
     return {"times": np.array(times), "T_hist": np.array(T_hist),
             "T_elem_hist": np.array(T_elem_hist), "history": history,
             "E_in": E_in, "enthalpy_gain": enthalpy_gain,
+            "enthalpy_gain_phys": enthalpy_gain_phys,
+            "cp_varying": bool(cp_varying),
             "balance_rel": balance_rel, "submesh": sub,
             "iron_idx": iron_idx, "used_nodes": used_nodes,
             "iron_volumes": vols_sub, "a": a, "v": v,

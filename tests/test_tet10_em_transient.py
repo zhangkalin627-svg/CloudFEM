@@ -28,7 +28,6 @@ from cloudfem.mesh.tet10_mesh import box_mesh_tet10
 from cloudfem.physics.em3d_tet10 import (
     assemble_tet10_av, solve_eddy_current_tet10,
     transient_eddy_current_tet10, transient_joule_power_tet10)
-from cloudfem.physics.em import MU0
 
 PI = np.pi
 NAMES = ["xmin", "xmax", "ymin", "ymax", "zmin", "zmax"]
@@ -224,7 +223,7 @@ def test_power_closure():
             Aq = Nq @ an[el]
             Apq = Nq @ ap[el]
             Eq[q] = -((Aq - Apq) / h + dNdx.T @ vv[el])
-        Pq += 0.5 * 1e6 * (vol / (1.0 / 6.0)) * float(np.sum(
+        Pq += 1e6 * (vol / (1.0 / 6.0)) * float(np.sum(
             dw * np.einsum("qm,qm->q", Eq, Eq)))
     rel = abs(P_mass - Pq) / P_mass
     print(f"[power] P_mass = {P_mass:.6e} W, P_duffy = {Pq:.6e} W, "

@@ -494,8 +494,10 @@ def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
     Dirichlet data for A on the outer boundary: A = 0 with an
     imposed J_s (default), A = (1/2) B x r for a constant
     B_applied, or an explicit ``a_bc`` map (constant in time).
-    V keeps the phasor-solve pinning (one node per conducting
-    component).
+    J_s and B_applied may be combined (boundary takes the
+    B_applied value, the source still drives); normally at most one
+    excitation is used.  V keeps the phasor-solve pinning (one node
+    per conducting component).
 
     Parameters
     ----------
@@ -513,13 +515,14 @@ def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
 
     Returns
     -------
-    dict with times (n_steps+1,), P (Joule power [W] per step,
-    E = -dA/dt - grad V via the backward difference with the
-    constraint-consistent V = -S^-1 G^T dA/dt), a_end (3N,)
-    and v_end (N,) real nodal vectors.  Note: the raw DAE unknown v
-    is not returned -- CN is not stiffly accurate and would leave a
-    +/- flip-flop on it; the a-sequence is unaffected (it equals CN
-    on the underlying ODE exactly).
+    dict with times (n_steps+1,), P (instantaneous Joule power [W]
+    per step, E = -dA/dt - grad V via the backward difference with
+    the constraint-consistent V = -S^-1 G^T dA/dt; real field, no
+    1/2 phasor averaging), a_end (3N,) and v_end (N,) real nodal
+    vectors.  Note: the raw DAE unknown v is not returned -- CN is
+    not stiffly accurate and would leave a +/- flip-flop on it; the
+    a-sequence is unaffected (it equals CN on the underlying ODE
+    exactly).
     """
     if method not in _THETA_EM:
         raise ValueError(f"unknown method {method!r}; use one of "
@@ -527,6 +530,8 @@ def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
     theta = _THETA_EM[method]
     if t_end <= 0:
         raise ValueError("t_end must be positive")
+    if dt <= 0:
+        raise ValueError("dt must be positive")
     if J_s is None and B_applied is None:
         raise ValueError("no excitation: pass J_s and/or B_applied")
 
@@ -573,7 +578,7 @@ def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
 
     A2, rhs0, keep, idx, val = _eliminate(A_lhs, np.zeros(nx), fixed)
     keep = np.asarray(keep, dtype=bool)
-    val = np.asarray(val, dtype=float)  # real time-domain system
+    val = np.asarray(np.real(val), dtype=float)  # real time-domain
     solve = spla.factorized(A2.tocsc())
     # Fixed-column contribution of A_lhs, precomputed once.
     A_kf = A_lhs.tocsr()[keep][:, idx] if len(idx) else None
@@ -601,6 +606,9 @@ def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
         rec = np.zeros(n_steps + 1, dtype=bool)
     a_hist = np.zeros((int(rec.sum()), 3 * n)) if rec.any() else None
     t_hist = times[rec] if rec.any() else None
+    if isinstance(history, (tuple, list)) and not rec.any():
+        raise ValueError(f"history window {tuple(history)} selects no "
+                         f"steps in [0, {t_end}]")
     x = np.zeros(nx)
     if len(idx):
         x[idx] = val
@@ -649,11 +657,14 @@ def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
 
 
 def transient_joule_power_tet10(mesh, a_prev, a_new, v, sigma, h):
-    """Total Joule power [W] for one transient step.
+    """Total instantaneous Joule power [W] for one transient step.
 
-    E = -(a_new - a_prev)/h - grad(V) (backward-difference E), exact
-    discrete power via the exact Tet10 mass matrix and the *true*
-    sigma (zero in air). Returns (P_total, Q_elem).
+    E = -(a_new - a_prev)/h - grad(V) (backward-difference E) is a
+    *real instantaneous* field, so the power density is sigma*|E|^2
+    with no 1/2 phasor time-averaging factor (that 1/2 belongs to
+    the e^{iwt} phasor convention of total_joule_power_tet10).
+    Exact for the discrete E via the exact Tet10 mass matrix and the
+    *true* sigma (zero in air). Returns (P_total, Q_elem).
     """
     a_prev = np.asarray(a_prev, dtype=float).reshape(-1, 3)
     a_new = np.asarray(a_new, dtype=float).reshape(-1, 3)
@@ -669,7 +680,7 @@ def transient_joule_power_tet10(mesh, a_prev, a_new, v, sigma, h):
         Ep = (-(a_new[el] - a_prev[el]) / h
               - np.einsum("pjx,j->px", grads, v[el]))
         re = np.einsum("pm,qm->pq", Ep, Ep)
-        P_e = 0.5 * sig_e[e] * vols[e] * float(
+        P_e = sig_e[e] * vols[e] * float(
             np.einsum("pq,pq->", _MASS_REF, re))
         Q[e] = P_e / vols[e]
     return float(np.sum(Q * vols)), Q

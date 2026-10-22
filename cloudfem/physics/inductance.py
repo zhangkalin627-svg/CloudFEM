@@ -4,14 +4,14 @@ Two ways to get a coil's inductance from a 3D phasor eddy-current
 solution, plus the analytic "active-coil" formula from Zhang's EFD
 course note (2026-10-21)::
 
-    L ~= mu0 * mu_r * N^2 * A_m / l_coil
+    L ~= mu0 * N^2 * A_m / l_coil
 
-where A_m is the magnetic cross-section: dominated by the
+where A_m is the weighted magnetic cross-section: dominated by the
 coil-workpiece air-gap area, plus the skin-layer areas where the
 field penetrates the copper (delta_Cu) and the workpiece (delta_w);
 the workpiece part carries the mu_r weight when the workpiece is
-magnetic.  In the fully magnetic-core limit the weighted form below
-reduces to the lecture-note form.
+magnetic.  (In the fully magnetic-core limit this reduces to the
+lecture-note form L ~= mu0*mu_r*N^2*A_m/l_coil.)
 
 All numbers produced here are simulation output.
 """
@@ -19,8 +19,7 @@ All numbers produced here are simulation output.
 import numpy as np
 
 from .em import MU0
-from .em3d_tet10 import (element_flux_density_tet10,
-                         magnetic_energy_tet10,
+from .em3d_tet10 import (magnetic_energy_tet10,
                          source_complex_power_tet10,
                          total_joule_power_tet10)
 

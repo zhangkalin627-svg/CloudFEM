@@ -4,7 +4,7 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.8.** 2D triangular P1 finite elements (structured +
+> **Status: v1.9.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), plus second-order
@@ -14,7 +14,9 @@ entirely on commodity Linux cloud machines.
 > at equal mesh size — see the roadmap entry) and 3D time-harmonic
 > eddy currents (v1.7; nodal A-V formulation) plus 3D transient
 > eddy currents and coil terminal-inductance extraction (v1.8;
-> theta method on the same nodal A-V solver), steady/transient heat
+> theta method on the same nodal A-V solver) plus 3D nonlinear
+> B-H (saturation) phasor eddy currents (v1.9; secant-mu Picard
+> iteration on the same solver), steady/transient heat
 > conduction (2D and 3D; the 3D
 > transient solver uses a consistent capacity matrix with
 > theta-method time integration and Dirichlet/Neumann/Robin
@@ -125,6 +127,7 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.6** Tet10 transient Neumann/Robin BCs | Adiabatic box + one-face heat flux: energy-balance drift; slab vs analytic (2/3)x Robin steady profile; max-principle spot check | Neumann drift 3.553e-15 / 1.561e-15 / 1.295e-15 (const / time-varying / space-varying); Robin steady inf-err 2.530e-08 (Tet4 2.404e-08); CN sub-threshold overshoot +2.240e-03 as in v1.0 |
 | **v1.7** Tet10 nodal A-V 3D time-harmonic eddy current | Manufactured-solution convergence; conducting sphere vs spherical-Bessel analytic loss; D1 cylinder vs axisymmetric reference; power reconciliation | MMS L2(A) rel err 2.362e-01 / 4.102e-02 / 2.547e-02, orders 2.53 / 2.14 (below scalar-P2 3.0 — known nodal curl-curl suboptimality); sphere P err −13.61 % (a/δ = 0.5) / −3.04 % (a/δ = 3.02 skin-dominated); D1 cylinder (h/δ = 0.22) 3D vs axi −12.25 % (< 15 % criterion); power closure 5.59e-03 / 2.55e-03, in tests/test_tet10_em.py |
 | **v1.8** Tet10 nodal A-V 3D transient eddy current + coil terminal inductance | DC-step long-time limit vs low-frequency phasor; step-halving temporal orders; sine (CN) phasor vs v1.7 phasor solver; inductance energy route vs circuit (Z) route; D1 coil L vs EFD analytic formula | DC-step long-time limit rel. diff 4.708e-08; sine CN phasor rel. L2 diff 0.036 % (step-halving orders: BE 1.78 on the step problem, CN 2.005 on smooth sine); L energy-vs-Z routes rel. diff 2.98 % (< 5 % criterion); D1 coil L vs EFD analytic ratio 1.501 (stated 0.3–3 band); full regression `run_all` 6/6 PASS + BIG-D3 SKIP, rc = 0, in tests/test_tet10_em_transient.py + tests/test_inductance.py |
+| **v1.9** Tet10 nodal A-V 3D nonlinear B-H (saturation) phasor eddy current | Linear limit (mu_mag0=0 / iron=None) vs the v1.7 linear solver; saturation bracketing between constant mu_r=1 and mu_r=201 linear solves; Picard convergence history; BIG-M10 axi nonlinear P/L order-of-magnitude check (stated non-tight) | linear-limit a-field rel. diff 0.000e+00 (bitwise, both paths); nonlinear P 468910.5 W strictly between 150757.5 W (mu_r=1) and 531896.3 W (mu_r=201); iron max|B| 2.718 T vs 4.425 T linear extrapolation; Picard 40 iters, rel_dB 1.62e-02 peak -> 9.53e-04 < 1e-3; M10 ratio 0.372 (stated 0.2–5 band); full regression `run_all` 6/6 PASS + BIG-D3 SKIP, rc = 0, in tests/test_tet10_em_nonlinear.py |
 | **BIG-M6** Cantilever beam static tip deflection (L/H = 10, end traction, symmetry half model, 4 mesh levels + Richardson extrapolation) | Euler–Bernoulli `PL³/(3EI)` = 0.4000 mm | −6.09 % / −1.72 % / −0.77 % / −0.52 % (finest < 1 % criterion); vs Timoshenko −1.29 % at finest (shear share 0.78 %); Richardson limit 0.3997–0.4010 mm — between EB and Timoshenko, residual 0.5–0.8 % gap is a 3D-vs-beam model difference, not mesh error, in tests/test_cantilever_benchmark.py |
 | **BIG-M7** 1-D rod thermal stress (real heat -> thermal-stress chain on one tet mesh, 4 mesh levels) | Closed form `sigma = -E alpha <dT>` = -240.00 MPa | slab-mean sigma_xx err 3.233 % / 2.175 % / 1.948 % / 1.664 % (finest < 2 % criterion); end reactions +/-24.40 kN vs 24.00 kN analytic, in tests/test_bench_thermal_stress.py |
 | **BIG-M8** Axisymmetric eddy current: solid cylinder in uniform axial AC field (a/delta = 2.51, 5 mesh levels) | Bessel closed form, three independent routes agree < 1e-8: P/L = 79.8105 W/m | FEM P/L err +4.894 % -> +0.520 % (finest < 5 % criterion), in tests/test_bench_axi_eddy.py |
@@ -476,10 +479,49 @@ docs/          roadmap
       optimal order needs second-order Nédélec edge elements,
       deferred beyond v1.8; linear materials, separable sources
       only, sparse direct solver, affine element maps only.
-- [ ] v1.9: 3D nonlinear B-H (saturation) phasor eddy current on the
+- [x] v1.9: 3D nonlinear B-H (saturation) phasor eddy current on the
       Tet10 nodal A-V solver — secant-mu Picard iteration with the
-      BIG-M4/M10 analytic magnetisation law (in development)
+      BIG-M4/M10 analytic magnetisation law
       — scope: docs/v1.9_scope.md
+      (cloudfem/physics/em3d_tet10.py adds bh_secant_mu_r, the
+      secant mu_r(|H|) of the analytic magnetisation law
+      M(H) = Ms*tanh(H/H_REF) — a stated model assumption, not
+      measured material data, isothermal so the M10 Curie switch
+      is identically 1 — and solve_eddy_current_nonlinear_tet10:
+      per-element nu(|B|) updated through the secant relation with
+      relaxation 0.5 (as in M10), the sigma blocks assembled once
+      and K(nu_e) reassembled each round; the convergence norm is
+      taken over the iron elements only — a whole-domain norm was
+      measured to mask the nonlinear region's motion, because the
+      air-region |B| is set by the applied field. Validation
+      (tests/test_tet10_em_nonlinear.py; all simulation output,
+      independently re-measured): linear limit bitwise identical
+      to the v1.7 linear solver on both the mu_mag0=0 and
+      iron=None paths (rel. diff 0.000e+00); strong-drive
+      nonlinear power 468910.5 W strictly bracketed by the
+      constant-mu_r=1 (150757.5 W) and mu_r=201 (531896.3 W)
+      linear solves on the same mesh; iron max|B| 2.718 T,
+      clamped below the mu_r=201 linear extrapolation 4.425 T,
+      with a surface/deep mu_r gradient of 6.1 vs 200.1; Picard
+      converged in 40 iterations (rel_dB peak 1.62e-02 -> final
+      9.53e-04 < 1e-3, P monotone decreasing); BIG-M10 axi
+      order-of-magnitude check ratio 0.372 inside the stated
+      0.2–5 band (non-tight: finite-length demagnetisation,
+      drive and mesh differences as documented); full regression
+      run_all 6/6 PASS + BIG-D3 SKIP, rc = 0, and the v1.7/v1.8
+      numbers reproduce item by item. Limitations: Picard
+      converges slowly under strong saturation (~0.92x/round in
+      the tail at relax=0.5; no Anderson/Aitken acceleration);
+      the secant/effective-mu phasor approximation generates no
+      harmonics and no hysteresis; the material law is an
+      analytic model, not measured data; no temperature coupling
+      or Curie point (v2.0 candidate, joining the v1.8 transient
+      EM -> thermal chain); the test mesh is coarse (h/delta ~ 49),
+      so absolute values are coarse-mesh simulation output and a
+      resolution-convergence study is a compute-queue task, not
+      part of this version; the manufactured-solution orders
+      2.53 / 2.14 of the nodal curl-curl operator remain
+      suboptimal (second-order Nedelec edge elements deferred).
 
 ## Licence
 

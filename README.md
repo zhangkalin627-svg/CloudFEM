@@ -4,7 +4,7 @@ An open-source, cloud-native multiphysics finite-element framework — a
 practical step toward a COMSOL-like simulation environment that runs
 entirely on commodity Linux cloud machines.
 
-> **Status: v1.7.** 2D triangular P1 finite elements (structured +
+> **Status: v1.8.** 2D triangular P1 finite elements (structured +
 > unstructured Delaunay meshes), tetrahedral P1 elements for 3D
 > domains (structured box meshes plus unstructured Delaunay meshes
 > of spheres, cylinders and L-shaped blocks), plus second-order
@@ -12,7 +12,9 @@ entirely on commodity Linux cloud machines.
 > conduction (v1.6: Neumann/Robin boundary terms), 3D linear
 > elasticity (v1.5; higher-order accuracy
 > at equal mesh size — see the roadmap entry) and 3D time-harmonic
-> eddy currents (v1.7; nodal A-V formulation), steady/transient heat
+> eddy currents (v1.7; nodal A-V formulation) plus 3D transient
+> eddy currents and coil terminal-inductance extraction (v1.8;
+> theta method on the same nodal A-V solver), steady/transient heat
 > conduction (2D and 3D; the 3D
 > transient solver uses a consistent capacity matrix with
 > theta-method time integration and Dirichlet/Neumann/Robin
@@ -122,6 +124,7 @@ Requirements: Python ≥ 3.10, `numpy`, `scipy`, `matplotlib`.
 | **v1.5** Tet10 transient heat | Cube cooling vs product-of-slabs series; adiabatic heat conservation; temporal orders (v1.0 protocol) | centre err −2.2e-03; drift 6.4e-16; BE 0.91/0.95, CN 1.94/2.38 |
 | **v1.6** Tet10 transient Neumann/Robin BCs | Adiabatic box + one-face heat flux: energy-balance drift; slab vs analytic (2/3)x Robin steady profile; max-principle spot check | Neumann drift 3.553e-15 / 1.561e-15 / 1.295e-15 (const / time-varying / space-varying); Robin steady inf-err 2.530e-08 (Tet4 2.404e-08); CN sub-threshold overshoot +2.240e-03 as in v1.0 |
 | **v1.7** Tet10 nodal A-V 3D time-harmonic eddy current | Manufactured-solution convergence; conducting sphere vs spherical-Bessel analytic loss; D1 cylinder vs axisymmetric reference; power reconciliation | MMS L2(A) rel err 2.362e-01 / 4.102e-02 / 2.547e-02, orders 2.53 / 2.14 (below scalar-P2 3.0 — known nodal curl-curl suboptimality); sphere P err −13.61 % (a/δ = 0.5) / −3.04 % (a/δ = 3.02 skin-dominated); D1 cylinder (h/δ = 0.22) 3D vs axi −12.25 % (< 15 % criterion); power closure 5.59e-03 / 2.55e-03, in tests/test_tet10_em.py |
+| **v1.8** Tet10 nodal A-V 3D transient eddy current + coil terminal inductance | DC-step long-time limit vs low-frequency phasor; step-halving temporal orders; sine (CN) phasor vs v1.7 phasor solver; inductance energy route vs circuit (Z) route; D1 coil L vs EFD analytic formula | DC-step long-time limit rel. diff 4.708e-08; sine CN phasor rel. L2 diff 0.036 % (step-halving orders: BE 1.78 on the step problem, CN 2.005 on smooth sine); L energy-vs-Z routes rel. diff 2.98 % (< 5 % criterion); D1 coil L vs EFD analytic ratio 1.501 (stated 0.3–3 band); full regression `run_all` 6/6 PASS + BIG-D3 SKIP, rc = 0, in tests/test_tet10_em_transient.py + tests/test_inductance.py |
 | **BIG-M6** Cantilever beam static tip deflection (L/H = 10, end traction, symmetry half model, 4 mesh levels + Richardson extrapolation) | Euler–Bernoulli `PL³/(3EI)` = 0.4000 mm | −6.09 % / −1.72 % / −0.77 % / −0.52 % (finest < 1 % criterion); vs Timoshenko −1.29 % at finest (shear share 0.78 %); Richardson limit 0.3997–0.4010 mm — between EB and Timoshenko, residual 0.5–0.8 % gap is a 3D-vs-beam model difference, not mesh error, in tests/test_cantilever_benchmark.py |
 | **BIG-M7** 1-D rod thermal stress (real heat -> thermal-stress chain on one tet mesh, 4 mesh levels) | Closed form `sigma = -E alpha <dT>` = -240.00 MPa | slab-mean sigma_xx err 3.233 % / 2.175 % / 1.948 % / 1.664 % (finest < 2 % criterion); end reactions +/-24.40 kN vs 24.00 kN analytic, in tests/test_bench_thermal_stress.py |
 | **BIG-M8** Axisymmetric eddy current: solid cylinder in uniform axial AC field (a/delta = 2.51, 5 mesh levels) | Bessel closed form, three independent routes agree < 1e-8: P/L = 79.8105 W/m | FEM P/L err +4.894 % -> +0.520 % (finest < 5 % criterion), in tests/test_bench_axi_eddy.py |
@@ -401,11 +404,6 @@ docs/          roadmap
       solver still Dirichlet-only; maximum principle not
       unconditional with the consistent mass matrix (as in v1.0).
 - [x] v1.7: Tet10 nodal A-V 3D time-harmonic eddy-current solver
-      (制造解阶 2.53/2.14 — nodal curl-curl 已知次优；球体高频 −3.04 %、
-      D1 圆柱 −12.25 %，见 docs/v1.8_scope.md)
-- [ ] v1.8: 3D transient eddy current (theta-method) on the Tet10 nodal
-      A-V solver + coil terminal-inductance extraction with EFD analytic
-      calibration — scope: docs/v1.8_scope.md
       (cloudfem/physics/em3d_tet10.py): 10-node quadratic tets,
       A-V formulation `curl(1/μ curl A) + iωσA + σ∇V = J_s` with
       the continuity equation `∇·(iωσ(A+∇V)) = 0` as the second
@@ -432,6 +430,52 @@ docs/          roadmap
       benchmark needs h/δ ≪ 1 (follow-up work); linear materials,
       single-frequency phasor solve, sparse direct solver
       (~4 DOF per mesh node); affine element maps only.
+- [x] v1.8: 3D transient eddy current (theta-method) on the Tet10 nodal
+      A-V solver + coil terminal-inductance extraction with EFD analytic
+      calibration — scope: docs/v1.8_scope.md
+      (cloudfem/physics/em3d_tet10.py adds
+      transient_eddy_current_tet10: monolithic theta discretisation
+      (BE/CN) of the time-domain A-V system
+      `curl(ν curl A) + σ(∂A/∂t + ∇V) = J_s(t)`,
+      `∇·(σ(∂A/∂t + ∇V)) = 0`, system matrix LU-factorised once,
+      separable source J_s(x)·time_scale(t) assembled once and only
+      rescaled per step; the transient Joule power uses the
+      instantaneous real field, σ|E|² with no ½ factor. New
+      cloudfem/physics/inductance.py: magnetic_energy_tet10 in the
+      exact form W_m = Re(a*·K·a)/4 (replacing a centroid-B
+      estimate that can be off by ~18× on wire-like near-singular
+      fields), terminal_inductance_tet10 (L = 4W_m/|I|²,
+      R_ac = 2P/|I|², Z = 2S/|I|², peak-phasor convention) and
+      inductance_active_coil_efd (the EFD active-coil formula
+      L ≈ μ0·μr·N²·A_m/l_coil). Also fixes a v1.7 sign bug:
+      source complex power is now S = −½∫J_s*·E dV (v1.7 returned
+      +½∫J_s·E*, whose real part is minus the Joule loss, so the
+      terminal Z had a negative real part). Validation
+      (tests/test_tet10_em_transient.py + tests/test_inductance.py;
+      all simulation output, independently re-measured): DC-step
+      (BE) long-time limit vs the low-frequency phasor solve
+      4.708e-08; sine drive (CN) phasor vs the v1.7 phasor solver
+      0.036 %, step-halving temporal orders BE 1.78 (step
+      problem) / CN 2.005 (smooth sine); complex-power regression
+      Re(S) vs P 7.82 % and Im(S) vs 2ωW_m 3.07 % (the 5-point
+      quadrature error scale of the discontinuous coil current —
+      the exact W_m identity itself checks to < 1e-12);
+      inductance energy route vs Z-imaginary route 2.98 %
+      (< 5 %); D1 coil L vs the EFD analytic value, ratio 1.501
+      (inside the stated 0.3–3 band, single-turn mapping with
+      finite length + truncated domain as documented); full
+      regression run_all 6/6 PASS + BIG-D3 SKIP, rc = 0.
+      Limitations: CN is unreliable on step sources — the
+      gauge-regularised stiff modes do not decay under CN
+      (R(z) → −1, non-decaying ringing; the CN and BE solutions
+      differ by 25.1 % on the step problem), so CN is for smooth
+      time_scale only and step / piecewise sources must use BE
+      (L-stable), a partition the tests assert explicitly; the
+      manufactured-solution orders 2.53 / 2.14 of the nodal
+      curl-curl operator remain suboptimal — restoring the
+      optimal order needs second-order Nédélec edge elements,
+      deferred beyond v1.8; linear materials, separable sources
+      only, sparse direct solver, affine element maps only.
 
 ## Licence
 

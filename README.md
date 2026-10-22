@@ -522,6 +522,11 @@ docs/          roadmap
       part of this version; the manufactured-solution orders
       2.53 / 2.14 of the nodal curl-curl operator remain
       suboptimal (second-order Nedelec edge elements deferred).
+- [ ] v2.0: 3D nonlinear B-H + thermal coupling on the Tet10
+      nodal A-V solver — mu_r(|B|, T) with the BIG-M4/M10 Curie
+      switch and sigma(T) law, staggered coupling to Tet10
+      transient heat conduction (in development)
+      — scope: docs/v2.0_scope.md
 
 ## Licence
 

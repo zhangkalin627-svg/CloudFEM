@@ -476,6 +476,10 @@ docs/          roadmap
       optimal order needs second-order Nédélec edge elements,
       deferred beyond v1.8; linear materials, separable sources
       only, sparse direct solver, affine element maps only.
+- [ ] v1.9: 3D nonlinear B-H (saturation) phasor eddy current on the
+      Tet10 nodal A-V solver — secant-mu Picard iteration with the
+      BIG-M4/M10 analytic magnetisation law (in development)
+      — scope: docs/v1.9_scope.md
 
 ## Licence
 

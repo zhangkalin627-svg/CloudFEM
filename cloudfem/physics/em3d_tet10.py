@@ -45,6 +45,11 @@ in the *mass term only* damps the gradient null-space component of
 A; physical current, field and loss outputs always use the true
 sigma (zero in air).
 
+v1.9 adds ``solve_eddy_current_nonlinear_tet10``: a Picard
+(secant-mu) nonlinear B-H phasor solve built on the linear system
+above (see docs/v1.9_scope.md).  The linear entries documented
+here are unchanged.
+
 Dirichlet data: full nodal Dirichlet on the outer boundary --
 ``A = (1/2) B x r`` for a uniform applied field ``B_applied``
 (``curl A0 = B``; fixing the normal component as well selects a
@@ -75,6 +80,7 @@ __all__ = [
     "element_flux_density_tet10", "total_joule_power_tet10",
     "source_complex_power_tet10", "transient_eddy_current_tet10",
     "transient_joule_power_tet10", "magnetic_energy_tet10",
+    "bh_secant_mu_r", "solve_eddy_current_nonlinear_tet10",
 ]
 
 # Levi-Civita tensor: (a x b)[k] = _EPS[k, l, m] a[l] b[m].
@@ -701,3 +707,276 @@ def magnetic_energy_tet10(mesh, a, nu=1.0 / MU0, K=None):
         K, _, _, _, _, _, _ = assemble_tet10_av(mesh, nu=nu)
     W = 0.25 * float(np.real(np.vdot(a, K @ a)))
     return W
+
+
+# ----------------------------------------------------------------------
+# 3D nonlinear B-H (saturation) phasor eddy currents -- v1.9
+# ----------------------------------------------------------------------
+
+def bh_secant_mu_r(Hmag, bsat=1.9, mu_mag0=200.0):
+    """Secant relative permeability of the BIG-M4/M10 magnetisation law.
+
+    DC magnetisation curve ``M(H) = Ms * tanh(H / H_REF)`` with
+    saturation magnetisation ``Ms = bsat / MU0`` and
+    ``H_REF = Ms / mu_mag0``; the secant relative permeability is
+
+        mu_r(|H|) = 1 + M(|H|) / |H| = 1 + mu_mag0 * tanh(h) / h,
+        h = |H| / H_REF,
+
+    -> ``1 + mu_mag0`` as |H| -> 0 and -> 1 as |H| -> infinity.
+    Defaults are the M10 values (bsat = 1.9 T saturation
+    polarisation, mu_mag0 = 200 low-field magnetic part, i.e.
+    low-field mu_r = 201).  This is a documented analytic *model*
+    curve, not measured material data.  Isothermal: the M10 Curie
+    tanh switch in temperature is identically 1 here (v1.9 has no
+    temperature coupling).
+    """
+    H = np.asarray(Hmag, dtype=float)
+    if mu_mag0 == 0.0:
+        return np.ones_like(H)
+    Ms = float(bsat) / MU0
+    H_REF = Ms / float(mu_mag0)
+    h = np.abs(H) / H_REF
+    ratio = np.where(h > 1.0e-6,
+                     np.tanh(h) / np.maximum(h, 1.0e-300),
+                     1.0 - h * h / 3.0)
+    return 1.0 + float(mu_mag0) * ratio
+
+
+def _assemble_curl_curl_tet10_nu(mesh, nu_e):
+    """Curl-curl matrix K for a per-element reluctivity array nu_e.
+
+    Same construction as the K block of :func:`assemble_tet10_av`
+    (same 5-point rule, same einsum); nu_e is already the
+    per-element array the Picard iteration updates, where
+    assemble_tet10_av samples a scalar/callable at centroids.
+    """
+    n = mesh.n_nodes
+    _, wq = quadrature()
+    rows, cols, data = [], [], []
+    for e, el in enumerate(mesh.elements):
+        el = np.asarray(el, dtype=int)
+        G, _, _, vol = element_operators(mesh, el)
+        C = np.einsum("klm,qpl->qpmk", _EPS, G)
+        ke = float(nu_e[e]) * vol * np.einsum("q,qpmk,qrnk->pmrn",
+                                              wq, C, C)
+        ke = ke.reshape(30, 30)
+        dofs = np.array([[3 * int(el[p]) + m for m in range(3)]
+                         for p in range(10)]).ravel()
+        rows.append(np.repeat(dofs, 30))
+        cols.append(np.tile(dofs, 30))
+        data.append(ke.ravel())
+    return sp.coo_matrix((np.concatenate(data),
+                          (np.concatenate(rows), np.concatenate(cols))),
+                         shape=(3 * n, 3 * n)).tocsr()
+
+
+def _solve_phasor_with_K_tet10(mesh, K, M, Gs, S, v_nodes, omega,
+                               B_applied, J_s, boundary, a_bc,
+                               permc_spec):
+    """One linear phasor solve with a given curl-curl matrix K.
+
+    Block assembly, source load, boundary elimination and unpacking
+    follow solve_eddy_current_tet10 line for line; only K varies
+    (it is the Picard-updated block).  Used solely by
+    solve_eddy_current_nonlinear_tet10.
+    """
+    n = mesh.n_nodes
+    n_v = len(v_nodes)
+    A_sys = sp.bmat([[K + 1j * omega * M, Gs],
+                     [1j * omega * Gs.T, S]], format="csr")
+
+    rhs = np.zeros(3 * n + n_v, dtype=complex)
+    if J_s is not None:
+        _, wq = quadrature()
+        for e, el in enumerate(mesh.elements):
+            el = np.asarray(el, dtype=int)
+            _, N, xq, vol = element_operators(mesh, el)
+            Jq = np.array([np.asarray(J_s(x, y, z), dtype=complex)
+                           for x, y, z in xq])          # (5, 3)
+            fe = vol * np.einsum("q,qm,qp->pm", wq, Jq, N)  # (10, 3)
+            for p in range(10):
+                rhs[3 * int(el[p]):3 * int(el[p]) + 3] += fe[p]
+
+    bnd = set(int(i) for i in _boundary_nodes(mesh, boundary))
+    fixed = {}
+    if B_applied is not None:
+        Bv = np.asarray(B_applied, dtype=float)
+
+        def a0_at(x):
+            return 0.5 * np.cross(Bv, x)
+    for p in bnd:
+        x = mesh.nodes[p]
+        val = a0_at(x) if B_applied is not None else np.zeros(3)
+        for m in range(3):
+            fixed[3 * p + m] = complex(val[m])
+    if a_bc:
+        for name, vals in a_bc.items():
+            fn = (lambda x, y, z, v=vals: np.asarray(v, dtype=complex))
+            if callable(vals):
+                fn = vals
+            for p in np.asarray(mesh.boundaries[name], dtype=int):
+                vv = np.asarray(fn(*mesh.nodes[int(p)]),
+                                dtype=complex).ravel()
+                for m in range(3):
+                    fixed[3 * int(p) + m] = vv[m]
+    A2, rhs2, keep, idx, val = _eliminate(A_sys, rhs, fixed)
+    try:
+        if permc_spec is not None:
+            sol = spla.spsolve(A2.tocsc(), rhs2,
+                                permc_spec=permc_spec)
+        else:
+            sol = spla.spsolve(A2.tocsc(), rhs2)
+    except RuntimeError as exc:
+        raise RuntimeError(f"Tet10 nonlinear eddy-current solve "
+                           f"failed: {exc}") from exc
+    sol = np.asarray(sol).ravel()
+    if not np.all(np.isfinite(sol)):
+        raise RuntimeError("Tet10 nonlinear eddy-current solve "
+                           "produced non-finite values (singular "
+                           "system; check gauge_eps, boundary spec "
+                           "and sigma)")
+    full = np.zeros(3 * n + n_v, dtype=complex)
+    full[keep] = sol
+    if len(idx):
+        full[idx] = val
+    a = full[:3 * n]
+    v = np.zeros(n, dtype=complex)
+    v[v_nodes] = full[3 * n:]
+    return a, v
+
+
+def solve_eddy_current_nonlinear_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
+                                       omega=0.0, B_applied=None,
+                                       J_s=None, boundary=None,
+                                       a_bc=None, gauge_eps=1e-6,
+                                       permc_spec=None,
+                                       iron=None, bsat=1.9,
+                                       mu_mag0=200.0, mu_init=None,
+                                       tol=1e-3, max_iter=50,
+                                       relax=0.5):
+    """3D nonlinear B-H phasor eddy-current solve (Picard, secant mu).
+
+    Same A-V phasor system as :func:`solve_eddy_current_tet10`, but
+    the reluctivity of the elements selected by ``iron`` follows
+    the secant B-H law :func:`bh_secant_mu_r` (the BIG-M4/M10
+    analytic model curve; isothermal, no temperature coupling).
+    Amplitudes are phasor peak amplitudes, consistent with the
+    time-averaged ``Q = 0.5 * sigma * |E|^2`` convention: per
+    iteration, each iron element's |B| (centroid phasor magnitude)
+    gives |H| = nu_e * |B| with the secant nu_e in use, the curve
+    gives the target mu_r, and nu is relaxed towards it,
+    ``nu <- (1 - relax) * nu + relax * nu_target``.  This is the
+    usual secant / effective-mu fundamental-harmonic approximation
+    of the nonlinear phasor problem -- it produces no harmonics
+    and is not an exact time-domain nonlinear solution.
+
+    Parameters (beyond solve_eddy_current_tet10's)
+    ----------
+    iron : callable(x, y, z) -> bool, optional.  Marks the
+        ferromagnetic elements (centroid-sampled, like sigma).
+        None -> no element is nonlinear (the solve then reproduces
+        the linear one, up to a second identical Picard pass).
+    bsat, mu_mag0 : B-H model curve parameters (M10 defaults).
+    mu_init : initial relative permeability of the iron elements;
+        default the low-field value 1 + mu_mag0.
+    tol : convergence tolerance on the relative change of the
+        |B| amplitude field (L2 over the iron elements; over all
+        elements when no iron is selected).
+    max_iter : maximum number of linear solves.
+    relax : Picard relaxation factor (M10 uses 0.5).
+
+    Returns
+    -------
+    a, v : as in solve_eddy_current_tet10 (from the final solve;
+        the nu_e in ``info`` is exactly the one that produced them).
+    info : dict with ``iterations``, ``converged``, ``rel_dB``
+        (per-iteration relative |B| change, from the 2nd solve on),
+        ``P`` (total Joule power [W] per solve), ``mu_r_elem`` and
+        ``nu_elem`` (final per-element values), ``B_elem`` (final
+        centroid phasor flux density).  If max_iter is reached
+        without meeting tol, ``converged`` is False and the last
+        solution is returned as-is (no exception).
+    """
+    if omega <= 0:
+        raise ValueError("omega must be positive (phasor eddy-current "
+                         "solve; omega = 0 magnetostatics is out of scope)")
+    if B_applied is None and J_s is None:
+        raise ValueError("no excitation: pass B_applied (background "
+                         "field) or J_s (imposed current density)")
+    if tol <= 0:
+        raise ValueError("tol must be positive")
+    if max_iter < 1:
+        raise ValueError("max_iter must be >= 1")
+    if not (0.0 < relax <= 1.0):
+        raise ValueError("relax must be in (0, 1]")
+
+    # sigma blocks are material-independent of nu: assemble once
+    # (assemble_tet10_av's K, built with nu = 1, is discarded).
+    _, M, Gs, S, v_nodes, sig_e, conducting = assemble_tet10_av(
+        mesh, nu=1.0, sigma=sigma, gauge_eps=gauge_eps)
+    if not conducting.any():
+        raise ValueError("no conducting elements (sigma > 0) in mesh")
+
+    nu_e = _element_values(mesh, nu)
+    if iron is None:
+        iron_mask = np.zeros(mesh.n_elements, dtype=bool)
+    else:
+        fn = _as_fn(iron)
+        cen = mesh.nodes[mesh.elements[:, :4]].mean(axis=1)
+        iron_mask = np.array([bool(fn(x, y, z)) for x, y, z in cen])
+    mu0_r_init = (1.0 + float(mu_mag0)) if mu_init is None \
+        else float(mu_init)
+    nu_e[iron_mask] = 1.0 / (MU0 * mu0_r_init)
+
+    hist_rel, hist_P = [], []
+    B_amp_prev = None
+    converged = False
+    a = v = B = None
+    it = 0
+    for it in range(1, max_iter + 1):
+        K = _assemble_curl_curl_tet10_nu(mesh, nu_e)
+        a, v = _solve_phasor_with_K_tet10(
+            mesh, K, M, Gs, S, v_nodes, omega, B_applied, J_s,
+            boundary, a_bc, permc_spec)
+        B = element_flux_density_tet10(mesh, a)
+        B_amp = np.sqrt(np.sum(np.abs(B) ** 2, axis=1))
+        P, _ = total_joule_power_tet10(mesh, a, v, sigma, omega)
+        hist_P.append(P)
+        rel = None
+        if B_amp_prev is not None:
+            # Relative |B| change on the iron elements only: the
+            # air-region |B| is set by the applied field and barely
+            # responds to nu, so a whole-domain norm would mask the
+            # nonlinear region's motion and stop the iteration
+            # prematurely (observed in prototyping: global rel
+            # < 1e-3 while surface mu_r was still mid-relaxation).
+            sel = iron_mask if iron_mask.any() else slice(None)
+            denom = max(float(np.linalg.norm(B_amp[sel])), 1e-300)
+            rel = float(np.linalg.norm(B_amp[sel] - B_amp_prev[sel])
+                        / denom)
+            hist_rel.append(rel)
+            if rel < tol:
+                converged = True
+                break
+        if it == max_iter:
+            break
+        B_amp_prev = B_amp
+        if iron_mask.any():
+            H_amp = B_amp[iron_mask] * nu_e[iron_mask]
+            mu_tgt = bh_secant_mu_r(H_amp, bsat=bsat,
+                                    mu_mag0=mu_mag0)
+            nu_tgt = 1.0 / (MU0 * mu_tgt)
+            nu_e[iron_mask] = ((1.0 - relax) * nu_e[iron_mask]
+                               + relax * nu_tgt)
+
+    # Per-element relative permeability implied by the final nu_e
+    # (iron: the converged secant value; elsewhere: the constant
+    # value implied by the linear `nu` spec).
+    mu_r_elem = 1.0 / (MU0 * nu_e)
+    info = {"iterations": it, "converged": converged,
+            "rel_dB": np.array(hist_rel), "P": np.array(hist_P),
+            "mu_r_elem": mu_r_elem, "nu_elem": nu_e.copy(),
+            "B_elem": B, "iron_mask": iron_mask,
+            "relax": relax, "tol": tol}
+    return a, v, info

@@ -401,6 +401,11 @@ docs/          roadmap
       solver still Dirichlet-only; maximum principle not
       unconditional with the consistent mass matrix (as in v1.0).
 - [x] v1.7: Tet10 nodal A-V 3D time-harmonic eddy-current solver
+      (制造解阶 2.53/2.14 — nodal curl-curl 已知次优；球体高频 −3.04 %、
+      D1 圆柱 −12.25 %，见 docs/v1.8_scope.md)
+- [ ] v1.8: 3D transient eddy current (theta-method) on the Tet10 nodal
+      A-V solver + coil terminal-inductance extraction with EFD analytic
+      calibration — scope: docs/v1.8_scope.md
       (cloudfem/physics/em3d_tet10.py): 10-node quadratic tets,
       A-V formulation `curl(1/μ curl A) + iωσA + σ∇V = J_s` with
       the continuity equation `∇·(iωσ(A+∇V)) = 0` as the second

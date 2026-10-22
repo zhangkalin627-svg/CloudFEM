@@ -73,7 +73,8 @@ from .em3d import _boundary_nodes, _eliminate
 __all__ = [
     "assemble_tet10_av", "solve_eddy_current_tet10",
     "element_flux_density_tet10", "total_joule_power_tet10",
-    "source_complex_power_tet10",
+    "source_complex_power_tet10", "transient_eddy_current_tet10",
+    "transient_joule_power_tet10", "magnetic_energy_tet10",
 ]
 
 # Levi-Civita tensor: (a x b)[k] = _EPS[k, l, m] a[l] b[m].
@@ -415,10 +416,17 @@ def total_joule_power_tet10(mesh, a, v, sigma, omega):
 def source_complex_power_tet10(mesh, a, v, J_s, omega):
     """Complex power delivered by the imposed source current [VA].
 
-    S = 0.5 * int J_s . E* dV with the discrete E field, integrated
+    S = -0.5 * int J_s* . E dV with the discrete E field, integrated
     with the 5-point rule (exact when J_s is elementwise polynomial
-    of degree <= 1). For a coil driven with total current phasor I,
-    the terminal impedance is Z = 2*S / |I|^2.
+    of degree <= 1).  The minus sign is the e^{iwt} Lorentz power
+    (-E.J_s, power delivered *by* the source); with it, Re(S) is the
+    Joule loss (== total_joule_power_tet10 up to quadrature) and
+    Im(S) = 2*w*(W_m - W_e).  For a coil driven with total current
+    phasor I, the terminal impedance is Z = 2*S / |I|^2.
+
+    (v1.8 fix: v1.7 returned +0.5*int J_s.E* dV, whose real part is
+    the *negative* Joule loss -- visible as a negative Re(Z) that
+    the D1 test printed but never asserted.)
     """
     a = np.asarray(a, dtype=complex).reshape(-1, 3)
     v = np.asarray(v, dtype=complex)
@@ -431,5 +439,265 @@ def source_complex_power_tet10(mesh, a, v, J_s, omega):
                        for x, y, z in xq])                    # (5, 3)
         Eq = (-1j * omega * np.einsum("qp,pm->qm", N, a[el])
               - np.einsum("qjm,j->qm", G, v[el]))
-        S += vol * np.einsum("q,qm,qm->", wq, Jq, Eq.conj())
-    return 0.5 * S
+        S += vol * np.einsum("q,qm,qm->", wq, Jq.conj(), Eq)
+    return -0.5 * S
+
+
+# ----------------------------------------------------------------------
+# 3D transient eddy currents (theta method) -- v1.8
+# ----------------------------------------------------------------------
+
+_THETA_EM = {"be": 1.0, "implicit_euler": 1.0,
+             "cn": 0.5, "crank_nicolson": 0.5}
+
+
+def _rhs_Js_tet10(mesh, J_s):
+    """Assemble the A-block load vector for a steady source current.
+
+    J_s is (x, y, z) -> (3,). Returns a real (3N,) vector.
+    """
+    n = mesh.n_nodes
+    rhs = np.zeros(3 * n)
+    _, wq = quadrature()
+    for e, el in enumerate(mesh.elements):
+        el = np.asarray(el, dtype=int)
+        _, N, xq, vol = element_operators(mesh, el)
+        Jq = np.array([np.asarray(J_s(x, y, z), dtype=float).ravel()
+                       for x, y, z in xq])                    # (5, 3)
+        fe = vol * np.einsum("q,qm,qp->pm", wq, Jq, N)     # (10, 3)
+        for p in range(10):
+            rhs[3 * int(el[p]):3 * int(el[p]) + 3] += fe[p]
+    return rhs
+
+
+def transient_eddy_current_tet10(mesh, nu=1.0 / MU0, sigma=0.0,
+                                 t_end=1.0, dt=0.1, method="cn",
+                                 J_s=None, time_scale=None, B_applied=None,
+                                 boundary=None, a_bc=None, gauge_eps=1e-6,
+                                 history=False):
+    """3D transient eddy currents on the Tet10 nodal A-V discretisation.
+
+    Time-domain system (real unknowns x = [a; v])::
+
+        [M_AA   0  ] [adot]   [K_AA  G] [a]   [rhs(t)]
+        [G^T    0  ] [vdot] + [0     S] [v] = [  0   ]
+
+    i.e. curl(nu curl A) + sigma*(dA/dt + grad V) = J_s(t) and
+    div(sigma*(dA/dt + grad V)) = 0 in the conductor.  The theta
+    step is applied monolithically; the system matrix
+    ``E/h + theta*K`` is LU-factorised once.  The algebraic V row is
+    enforced in theta-weighted form, consistent with the DAE.
+
+    The source is separable: J(x, y, z, t) = time_scale(t) * J_s(x,y,z);
+    the spatial pattern is assembled once and only scaled per step.
+
+    Dirichlet data for A on the outer boundary: A = 0 with an
+    imposed J_s (default), A = (1/2) B x r for a constant
+    B_applied, or an explicit ``a_bc`` map (constant in time).
+    J_s and B_applied may be combined (boundary takes the
+    B_applied value, the source still drives); normally at most one
+    excitation is used.  V keeps the phasor-solve pinning (one node
+    per conducting component).
+
+    Parameters
+    ----------
+    J_s : callable, optional. (x, y, z) -> (3,) imposed current
+        density pattern [A/m^2].
+    time_scale : callable, optional. t -> float multiplier; the
+        effective source is time_scale(t) * J_s.  Default 1.
+    t_end, dt : floats; the step used is t_end / ceil(t_end / dt).
+    method : "be"/"implicit_euler" (theta = 1) or "cn"/"crank_nicolson"
+        (theta = 1/2).
+    history : if True, also return the A field at every step
+        ("t_hist", "a_hist"); if a (t0, t1) tuple, record only steps
+        with t0 <= t <= t1 (for last-period Fourier extraction
+        without storing the whole run).
+
+    Returns
+    -------
+    dict with times (n_steps+1,), P (instantaneous Joule power [W]
+    per step, E = -dA/dt - grad V via the backward difference with
+    the constraint-consistent V = -S^-1 G^T dA/dt; real field, no
+    1/2 phasor averaging), a_end (3N,) and v_end (N,) real nodal
+    vectors.  Note: the raw DAE unknown v is not returned -- CN is
+    not stiffly accurate and would leave a +/- flip-flop on it; the
+    a-sequence is unaffected (it equals CN on the underlying ODE
+    exactly).
+    """
+    if method not in _THETA_EM:
+        raise ValueError(f"unknown method {method!r}; use one of "
+                         f"{sorted(_THETA_EM)}")
+    theta = _THETA_EM[method]
+    if t_end <= 0:
+        raise ValueError("t_end must be positive")
+    if dt <= 0:
+        raise ValueError("dt must be positive")
+    if J_s is None and B_applied is None:
+        raise ValueError("no excitation: pass J_s and/or B_applied")
+
+    K, M, Gs, S, v_nodes, sig_e, conducting = assemble_tet10_av(
+        mesh, nu=nu, sigma=sigma, gauge_eps=gauge_eps)
+    if not conducting.any():
+        raise ValueError("no conducting elements (sigma > 0) in mesh")
+    n = mesh.n_nodes
+    n_v = len(v_nodes)
+    nx = 3 * n + n_v
+
+    Z_av = sp.csr_matrix((3 * n, n_v))
+    Z_va = sp.csr_matrix((n_v, 3 * n))
+    Z_vv = sp.csr_matrix((n_v, n_v))
+    E = sp.bmat([[M, Z_av], [Gs.T, Z_vv]], format="csr")
+    Kmat = sp.bmat([[K, Gs], [Z_va, S]], format="csr")
+    n_steps = int(np.ceil(t_end / dt - 1e-12))
+    h = t_end / n_steps
+
+    A_lhs = (E / h + theta * Kmat).tocsr()
+    A_rhs = (E / h - (1.0 - theta) * Kmat).tocsr()
+
+    # Dirichlet for A on the outer boundary (constant in time).
+    bnd = set(int(i) for i in _boundary_nodes(mesh, boundary))
+    fixed = {}
+    Bv = None
+    if B_applied is not None:
+        Bv = np.asarray(B_applied, dtype=float)
+    for p in bnd:
+        x = mesh.nodes[p]
+        val = 0.5 * np.cross(Bv, x) if Bv is not None else np.zeros(3)
+        for m in range(3):
+            fixed[3 * p + m] = float(val[m])
+    if a_bc:
+        for name, vals in a_bc.items():
+            fn = (lambda x, y, z, v=vals: np.asarray(v, dtype=float))
+            if callable(vals):
+                fn = vals
+            for p in np.asarray(mesh.boundaries[name], dtype=int):
+                vv = np.asarray(fn(*mesh.nodes[int(p)]),
+                                dtype=float).ravel()
+                for m in range(3):
+                    fixed[3 * int(p) + m] = vv[m]
+
+    A2, rhs0, keep, idx, val = _eliminate(A_lhs, np.zeros(nx), fixed)
+    keep = np.asarray(keep, dtype=bool)
+    val = np.asarray(np.real(val), dtype=float)  # real time-domain
+    solve = spla.factorized(A2.tocsc())
+    # Fixed-column contribution of A_lhs, precomputed once.
+    A_kf = A_lhs.tocsr()[keep][:, idx] if len(idx) else None
+    # The algebraic V row makes CN/BE monolithic stepping exact for a,
+    # but CN is not stiffly accurate: the raw DAE unknown v would keep
+    # a +/- flip-flop.  Diagnostics (power, returned V) therefore use
+    # the constraint-consistent V = -S^-1 G^T adot (S is tiny; one
+    # factorisation, cheap per-step apply).
+    solve_S = spla.factorized(S.tocsc())
+
+    if J_s is not None:
+        f_static = _rhs_Js_tet10(mesh, J_s)
+        time_scale = (lambda t: 1.0) if time_scale is None else time_scale
+    else:
+        f_static = None
+
+    times = np.linspace(0.0, t_end, n_steps + 1)
+    P = np.zeros(n_steps + 1)
+    if history is True:
+        rec = np.ones(n_steps + 1, dtype=bool)
+    elif isinstance(history, (tuple, list)):
+        t0h, t1h = history
+        rec = (times >= t0h - 1e-12) & (times <= t1h + 1e-12)
+    else:
+        rec = np.zeros(n_steps + 1, dtype=bool)
+    a_hist = np.zeros((int(rec.sum()), 3 * n)) if rec.any() else None
+    t_hist = times[rec] if rec.any() else None
+    if isinstance(history, (tuple, list)) and not rec.any():
+        raise ValueError(f"history window {tuple(history)} selects no "
+                         f"steps in [0, {t_end}]")
+    x = np.zeros(nx)
+    if len(idx):
+        x[idx] = val
+    a_prev = x[:3 * n].copy()
+    _rh = 0
+    if rec[0]:
+        a_hist[0] = a_prev
+        _rh = 1
+    v_end = np.zeros(n)  # overwritten below; consistent V of last step
+
+    for k in range(1, n_steps + 1):
+        f = np.zeros(nx)
+        if f_static is not None:
+            s = (theta * time_scale(times[k])
+                 + (1.0 - theta) * time_scale(times[k - 1]))
+            f[:3 * n] = s * f_static
+        b = A_rhs @ x + f
+        b_red = b[keep]
+        if A_kf is not None:
+            b_red = b_red - A_kf @ val
+        xk = np.zeros(nx)
+        xk[keep] = solve(b_red)
+        if len(idx):
+            xk[idx] = val
+        x = xk
+        a_new = x[:3 * n]
+        # Constraint-consistent V for diagnostics (see factorisation note
+        # above): V = -S^-1 G^T adot, adot by backward difference.
+        adot = (a_new - a_prev) / h
+        v_new = np.zeros(n)
+        v_new[v_nodes] = -solve_S(Gs.T @ adot)
+        P[k] = transient_joule_power_tet10(mesh, a_prev, a_new, v_new,
+                                           sigma, h)[0]
+        a_prev = a_new.copy()
+        v_end = v_new
+        if rec[k]:
+            a_hist[_rh] = a_new
+            _rh += 1
+
+    out = {"times": times, "P": P, "a_end": x[:3 * n].copy(),
+           "v_end": v_end}
+    if a_hist is not None:
+        out["t_hist"] = t_hist
+        out["a_hist"] = a_hist
+    return out
+
+
+def transient_joule_power_tet10(mesh, a_prev, a_new, v, sigma, h):
+    """Total instantaneous Joule power [W] for one transient step.
+
+    E = -(a_new - a_prev)/h - grad(V) (backward-difference E) is a
+    *real instantaneous* field, so the power density is sigma*|E|^2
+    with no 1/2 phasor time-averaging factor (that 1/2 belongs to
+    the e^{iwt} phasor convention of total_joule_power_tet10).
+    Exact for the discrete E via the exact Tet10 mass matrix and the
+    *true* sigma (zero in air). Returns (P_total, Q_elem).
+    """
+    a_prev = np.asarray(a_prev, dtype=float).reshape(-1, 3)
+    a_new = np.asarray(a_new, dtype=float).reshape(-1, 3)
+    v = np.asarray(v, dtype=float)
+    sig_e = _element_values(mesh, sigma)
+    vols = mesh.element_volumes()
+    Q = np.zeros(mesh.n_elements)
+    for e, el in enumerate(mesh.elements):
+        if sig_e[e] <= 0.0:
+            continue
+        el = np.asarray(el, dtype=int)
+        grads = _nodal_gradients(mesh, el)          # (10, 10, 3)
+        Ep = (-(a_new[el] - a_prev[el]) / h
+              - np.einsum("pjx,j->px", grads, v[el]))
+        re = np.einsum("pm,qm->pq", Ep, Ep)
+        P_e = sig_e[e] * vols[e] * float(
+            np.einsum("pq,pq->", _MASS_REF, re))
+        Q[e] = P_e / vols[e]
+    return float(np.sum(Q * vols)), Q
+
+
+def magnetic_energy_tet10(mesh, a, nu=1.0 / MU0, K=None):
+    """Time-averaged stored magnetic energy [J] from a phasor A field.
+
+    W_m = 1/4 Re int B.H* dV.  Computed *exactly* for the discrete
+    field as W_m = Re(a* . K . a)/4 with the assembled curl-curl
+    matrix K (a*Ka = int nu|curl A_h|^2 by construction of K -- no
+    quadrature error, unlike a centroid-B estimate which can be
+    10x off near wire-like singularities).  Pass the assembled K
+    when available; otherwise it is assembled here.
+    """
+    a = np.asarray(a, dtype=complex).reshape(-1, 3).ravel()
+    if K is None:
+        K, _, _, _, _, _, _ = assemble_tet10_av(mesh, nu=nu)
+    W = 0.25 * float(np.real(np.vdot(a, K @ a)))
+    return W

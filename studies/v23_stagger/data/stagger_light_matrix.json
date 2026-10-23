@@ -1,0 +1,296 @@
+{
+  "meta": {
+    "study": "v2.3 B stagger light smoke (S4-level, t_end=0.1, dt=0.02, em_every=5)",
+    "code_base": "main@7f57cc7 (checkout 1b7d26f, diff 1b7d26f..7f57cc7 = README only; physics identical)",
+    "repo": "/home/hatch/workspace/cloudfem",
+    "geometry": "iron cylinder R=15mm L=60mm, air box half=0.045, h=0.016; f=2kHz B_applied H0=1e6 A/m; T0=20C; cp(T) law default-off (constant rho_cp); adiabatic",
+    "numpy": "1.26.4",
+    "ran_at_utc": "2026-10-23T08:08:42.874185+00:00",
+    "unit": "all numbers are simulation outputs (仿真输出)"
+  },
+  "cases": [
+    {
+      "stagger_iter": 1,
+      "stagger_tol": null,
+      "n_intervals": 1,
+      "stagger_passes": [
+        1
+      ],
+      "stagger_dT": [
+        null
+      ],
+      "P_per_interval": [
+        468981.8990038223
+      ],
+      "em_picard_iters": [
+        40
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 1,
+      "total_picard_iters": 40,
+      "Tmax_degC": 666.6673583840344,
+      "E_in_J": 46898.18990038223,
+      "balance_rel": 0.0,
+      "wall_s": 203.46872785199957,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 1,
+      "stagger_tol": 0.01,
+      "n_intervals": 1,
+      "stagger_passes": [
+        1
+      ],
+      "stagger_dT": [
+        null
+      ],
+      "P_per_interval": [
+        468981.8990038223
+      ],
+      "em_picard_iters": [
+        40
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 1,
+      "total_picard_iters": 40,
+      "Tmax_degC": 666.6673583840344,
+      "E_in_J": 46898.18990038223,
+      "balance_rel": 0.0,
+      "wall_s": 201.08076906899987,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 1,
+      "stagger_tol": 0.001,
+      "n_intervals": 1,
+      "stagger_passes": [
+        1
+      ],
+      "stagger_dT": [
+        null
+      ],
+      "P_per_interval": [
+        468981.8990038223
+      ],
+      "em_picard_iters": [
+        40
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 1,
+      "total_picard_iters": 40,
+      "Tmax_degC": 666.6673583840344,
+      "E_in_J": 46898.18990038223,
+      "balance_rel": 0.0,
+      "wall_s": 202.84813153999858,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": null,
+      "n_intervals": 1,
+      "stagger_passes": [
+        2
+      ],
+      "stagger_dT": [
+        68.71095030151321
+      ],
+      "P_per_interval": [
+        471355.1137714267
+      ],
+      "em_picard_iters": [
+        15
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 2,
+      "total_picard_iters": 15,
+      "Tmax_degC": 611.0684600367338,
+      "E_in_J": 47135.51137714268,
+      "balance_rel": 0.0,
+      "wall_s": 282.37706232799974,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.0833982609889126,
+      "rel_Ein_vs_iter1": 0.005060354722955093
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": 0.01,
+      "n_intervals": 1,
+      "stagger_passes": [
+        2
+      ],
+      "stagger_dT": [
+        68.71095030151321
+      ],
+      "P_per_interval": [
+        471355.1137714267
+      ],
+      "em_picard_iters": [
+        15
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 2,
+      "total_picard_iters": 15,
+      "Tmax_degC": 611.0684600367338,
+      "E_in_J": 47135.51137714268,
+      "balance_rel": 0.0,
+      "wall_s": 285.3184315260005,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.0833982609889126,
+      "rel_Ein_vs_iter1": 0.005060354722955093
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": 0.001,
+      "n_intervals": 1,
+      "stagger_passes": [
+        2
+      ],
+      "stagger_dT": [
+        68.71095030151321
+      ],
+      "P_per_interval": [
+        471355.1137714267
+      ],
+      "em_picard_iters": [
+        15
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 2,
+      "total_picard_iters": 15,
+      "Tmax_degC": 611.0684600367338,
+      "E_in_J": 47135.51137714268,
+      "balance_rel": 0.0,
+      "wall_s": 280.98434437800097,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.0833982609889126,
+      "rel_Ein_vs_iter1": 0.005060354722955093
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": null,
+      "n_intervals": 1,
+      "stagger_passes": [
+        3
+      ],
+      "stagger_dT": [
+        13.131200188426988
+      ],
+      "P_per_interval": [
+        471397.23677484074
+      ],
+      "em_picard_iters": [
+        2
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 3,
+      "total_picard_iters": 2,
+      "Tmax_degC": 611.0876082709482,
+      "E_in_J": 47139.72367748408,
+      "balance_rel": 6.173950160559579e-16,
+      "wall_s": 298.8571737700004,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.08336953866739258,
+      "rel_Ein_vs_iter1": 0.005150172695681741
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": 0.01,
+      "n_intervals": 1,
+      "stagger_passes": [
+        3
+      ],
+      "stagger_dT": [
+        13.131200188426988
+      ],
+      "P_per_interval": [
+        471397.23677484074
+      ],
+      "em_picard_iters": [
+        2
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 3,
+      "total_picard_iters": 2,
+      "Tmax_degC": 611.0876082709482,
+      "E_in_J": 47139.72367748408,
+      "balance_rel": 6.173950160559579e-16,
+      "wall_s": 290.434381740999,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.08336953866739258,
+      "rel_Ein_vs_iter1": 0.005150172695681741
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": 0.001,
+      "n_intervals": 1,
+      "stagger_passes": [
+        3
+      ],
+      "stagger_dT": [
+        13.131200188426988
+      ],
+      "P_per_interval": [
+        471397.23677484074
+      ],
+      "em_picard_iters": [
+        2
+      ],
+      "em_converged": [
+        true
+      ],
+      "total_em_solves": 3,
+      "total_picard_iters": 2,
+      "Tmax_degC": 611.0876082709482,
+      "E_in_J": 47139.72367748408,
+      "balance_rel": 6.173950160559579e-16,
+      "wall_s": 292.24725727299847,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.08336953866739258,
+      "rel_Ein_vs_iter1": 0.005150172695681741
+    }
+  ],
+  "contraction_cross_run": {
+    "interval_0": {
+      "d1_iter2": 68.71095030151321,
+      "d2_iter3": 13.131200188426988,
+      "factor": 0.19110782387385788,
+      "contracts": true
+    }
+  },
+  "preliminary_conclusions": {
+    "unit": "all numbers are simulation outputs (仿真输出); light smoke only, 1 EM interval",
+    "contraction": "contracts: cross-run factor d2(iter=3)/d1(iter=2) = 0.191 < 1 on interval 0. 定点迭代收缩成立（该区间）。",
+    "tol_early_break": "not observed: dT (68.7 K @iter=2, 13.1 K @iter=3) >> tol (1e-2/1e-3 K); all tol runs identical to tol=None, passes unchanged. 1e-2/1e-3 K 在此算例上不可达，无提前跳出。",
+    "Tmax_sensitivity": "HIGH: iter=1 Tmax=666.667 C vs iter=2/3 Tmax=611.07/611.09 C (rel -8.34%). Loosely-coupled (iter=1, current default) overestimates peak temperature by ~55 K on this case. E_in sensitivity small (+0.5%). iter=2 vs iter=3 agree (Tmax diff 0.02 C, E_in diff 4 J) -> iter=2 essentially converged here.",
+    "cost": "wall 203s(iter=1) -> 283s(iter=2, +40%) -> 293s(iter=3, +44%); EM Picard iters collapse with warm start (40 -> 15 -> 2 per solve). iter=2 is the cost-benefit sweet spot on this case.",
+    "tol_direction": "tol must be >= ~0.1 K to be reachable on this class of case (dT ~13 K at pass 3, factor ~0.19 => ~4-5 passes to reach 0.1-1 K); needs cloud A1-level matrix (4 intervals, iter up to 5-6) to confirm. Do NOT adopt 1e-2/1e-3 K blindly.",
+    "non_contracting_domain": "not observed in this matrix (factor 0.19 < 1); cloud matrix may reveal non-contracting regimes (e.g. Curie-crossing intervals where mu_r collapses) - must be recorded per scope R1.",
+    "limitations": [
+      "light smoke has only 1 EM interval: no contraction curve, single cross-run ratio",
+      "local numpy 1.26.4 (butler standard numpy 2.5.4): qualitative only",
+      "cp(T) law default-off (constant rho_cp); adiabatic; no Robin (main has none)"
+    ]
+  }
+}

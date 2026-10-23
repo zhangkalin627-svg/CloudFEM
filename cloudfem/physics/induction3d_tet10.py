@@ -504,7 +504,8 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         floats or callables(x, y, z), constant in time; only the
         "surface" key is accepted (others -> ValueError); h < 0
         -> ValueError; h = 0 degenerates to the adiabatic numbers
-        bitwise.  Model-assumption parameters, not measured data.
+        (S1: relative difference <= 1e-12).  Model-assumption
+        parameters, not measured data.
 
     Returns a dict with ``times`` / ``T_hist`` (workpiece nodal
     temperatures at the EM interval ends, T_hist[0] at t = 0),

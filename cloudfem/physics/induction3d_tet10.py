@@ -70,8 +70,15 @@ or the pass count is exhausted.
 
 The workpiece is the set of elements marked by the ``iron``
 predicate; the heat solve runs on that Tet10 submesh with all faces
-adiabatic (the same short-time assumption as BIG-M10 case B and the
-v1.4 chain: no heat loss to air/coil).  The element Joule source is
+adiabatic by default (the same short-time assumption as BIG-M10
+case B and the v1.4 chain: no heat loss to air/coil).  v2.2 adds an
+opt-in Robin convection cooling boundary on the workpiece exterior
+surface (``cooling={"surface": (h, T_inf)}``): the exterior faces
+are registered by face-occurrence count and the Robin terms are
+assembled with the v1.6-accepted assembler; the energy account then
+becomes the three-party identity E_in = ΔH_disc + E_loss.  With
+``cooling=None`` (the default) the float path is bitwise the v2.0/v2.1
+one.  The element Joule source is
 assembled exactly as an element-constant load (the assemble_tet10
 f-assembly with f == Q_e), so with the adiabatic boundary the
 discrete identity ones^T C_iv dT = dt * P holds per EM interval
@@ -95,7 +102,8 @@ from scipy.special import erf
 from scipy.spatial import cKDTree
 
 from ..fem.tet10 import (assemble_mass_tet10, assemble_tet10,
-                         element_operators, quadrature)
+                         assemble_boundary_terms_tet10,
+                         element_operators, quadrature, _FACES10)
 from ..mesh.tet10_mesh import Tet10Mesh
 from .em import MU0
 from .em3d_tet10 import (_assemble_curl_curl_tet10_nu,
@@ -387,6 +395,48 @@ def _extract_submesh_tet10(mesh, elem_mask):
     return sub, used, elem_idx
 
 
+def _register_surface_boundary_tet10(sub):
+    """Register the submesh exterior surface as boundaries["surface"].
+
+    v2.2 design (docs/v2.2_scope.md §2.2): faces are found by
+    occurrence count over the corner triples -- a face shared by
+    exactly one element is exterior.  All six nodes (corners +
+    edge midpoints) of exterior faces are registered.  The
+    occurrence-count face set is authoritative; it is NOT allowed
+    to infer faces back from the node set (a one-cell-thick wall
+    would then wrongly collect interior faces whose six nodes all
+    lie on the surface).
+    """
+    counts = {}
+    faces = {}
+    for el in sub.elements:
+        el = [int(v) for v in el]
+        for corners, mids in _FACES10:
+            tri = tuple(el[c] for c in corners)
+            key = tuple(sorted(tri))
+            counts[key] = counts.get(key, 0) + 1
+            if key not in faces:
+                faces[key] = tuple(el[c] for c in corners + mids)
+    surf_nodes = set()
+    for key, cnt in counts.items():
+        if cnt == 1:
+            surf_nodes.update(faces[key])
+    sub.boundaries["surface"] = np.array(sorted(surf_nodes), dtype=int)
+    return sub
+
+
+def _cooling_boundary_terms(sub, h, T_inf):
+    """(K_h, F_h) of the Robin cooling on the submesh exterior surface.
+
+    Registers the exterior surface (see
+    :func:`_register_surface_boundary_tet10`) and assembles with the
+    v1.6-accepted :func:`assemble_boundary_terms_tet10` (no separate
+    face quadrature here).
+    """
+    _register_surface_boundary_tet10(sub)
+    return assemble_boundary_terms_tet10(sub, robin={"surface": (h, T_inf)})
+
+
 def _element_source_load(sub, Q_sub):
     """Nodal load of an element-constant heat source Q_sub [W/m^3].
 
@@ -412,6 +462,7 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
                                stagger_tol=None, em_tol=1e-3,
                                em_max_iter=50, em_relax=0.5,
                                gauge_eps=1e-6, permc_spec=None,
+                               cooling=None,
                                **law_kwargs):
     """Staggered EM -> thermal induction heating of a steel workpiece.
 
@@ -445,15 +496,29 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     method : heat time integration, "be" (default) or "cn".
     stagger_iter, stagger_tol : fixed-point passes per EM interval
         (module docstring); 1 = pure loosely-coupled update.
+    cooling : None (default) = adiabatic on all submesh faces,
+        the v2.0/v2.1 float path bitwise; or
+        {"surface": (h, T_inf)} for the v2.2 Robin convection
+        cooling on the workpiece exterior surface,
+        q_loss = h * (T_s - T_inf) [W/m^2] outward.  h/T_inf are
+        floats or callables(x, y, z), constant in time; only the
+        "surface" key is accepted (others -> ValueError); h < 0
+        -> ValueError; h = 0 degenerates to the adiabatic numbers
+        bitwise.  Model-assumption parameters, not measured data.
 
     Returns a dict with ``times`` / ``T_hist`` (workpiece nodal
     temperatures at the EM interval ends, T_hist[0] at t = 0),
     ``T_elem_hist`` (per-iron-element temperatures, same times),
     ``history`` (per-interval records: t_end, P, em_iterations,
     em_converged, stagger_passes, T_elem_mean/max, frac_above_Tc,
-    mu_r_iron_mean/min), ``E_in`` / ``enthalpy_gain`` /
-    ``balance_rel`` (energy account; with cp(T) enabled the
-    account is the discrete enthalpy form sum_iv ones^T C_iv
+    mu_r_iron_mean/min; plus v2.2: E_loss_iv [J], loss_rate_end
+    [W], peak_engaged), ``E_in`` / ``E_loss`` /
+    ``enthalpy_gain`` / ``balance_rel`` (energy account; with
+    cooling the account is the discrete three-party identity
+    E_in = ΔH_disc + E_loss, and ``balance_cool`` carries the
+    pure-cooling metric (E_in - ΔH - E_loss)/D,
+    D = max(|ΔH|, E_loss), None when D == 0; with cp(T) enabled
+    the account is the discrete enthalpy form sum_iv ones^T C_iv
     dT_iv, and ``enthalpy_gain_phys`` carries the analytic
     enthalpy diagnostic), ``cp_varying``, ``submesh``,
     ``iron_idx``, ``used_nodes`` and the final ``a``, ``v``,
@@ -483,6 +548,21 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     cp_varying = (cp_slope != 0.0) or (cp_peak_h != 0.0
                                       and cp_peak_w > 0.0)
 
+    # v2.2: cooling parameter validation (fixed here, before any solve).
+    if cooling is not None:
+        if not isinstance(cooling, dict):
+            raise ValueError("cooling must be None or a dict, got "
+                             f"{type(cooling).__name__}")
+        bad_keys = [k for k in cooling if k != "surface"]
+        if bad_keys:
+            raise ValueError("cooling accepts only the 'surface' key; "
+                             f"unsupported keys {bad_keys}")
+    has_cooling = bool(cooling and "surface" in cooling)
+    if has_cooling:
+        h_cool, Tinf_cool = cooling["surface"]
+        if not callable(h_cool) and float(h_cool) < 0.0:
+            raise ValueError(f"cooling h must be >= 0, got {h_cool}")
+
     iron_mask, _ = _iron_mask(mesh, iron)
     sub, used_nodes, iron_idx = _extract_submesh_tet10(mesh, iron_mask)
     vols_sub = sub.element_volumes()
@@ -490,6 +570,13 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     C1 = assemble_mass_tet10(sub, rho_cp=1.0)
     K_th, _ = assemble_tet10(sub, k=k_th, f=0.0)
     ones_sub = np.ones(sub.n_nodes)
+
+    # v2.2: Robin cooling terms (assembled once; h is time-independent).
+    # With cooling=None this block is skipped and K_h/F_h stay None,
+    # so the advance path below is bitwise the v2.0/v2.1 one.
+    K_h = F_h = None
+    if has_cooling:
+        K_h, F_h = _cooling_boundary_terms(sub, h_cool, Tinf_cool)
 
     n_steps = int(np.ceil(t_end / dt - 1e-12))
     if n_steps < 1:
@@ -500,17 +587,42 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         """Factorized theta-stepper for one capacity matrix.
 
         Identical operations to the v2.0 inline code; the closure
-        is rebuilt per EM interval when cp(T) varies.
+        is rebuilt per EM interval when cp(T) varies.  With
+        cooling the system matrix is K_th + K_h and every heat
+        step adds one h_step * F_h to the right-hand side (F_h is
+        time-independent, so (1-theta)*F_h + theta*F_h = F_h).
         """
-        A_sys = C_mat + theta * h_step * K_th
-        R_sys = C_mat - (1.0 - theta) * h_step * K_th
+        K_tot = K_th if K_h is None else K_th + K_h
+        A_sys = C_mat + theta * h_step * K_tot
+        R_sys = C_mat - (1.0 - theta) * h_step * K_tot
         solve = spla.factorized(A_sys.tocsc())
 
-        def advance(T_start, F_Q, n_sub):
+        def advance(T_start, F_Q, n_sub, track_steps=False):
+            """Advance n_sub heat steps; also return the interval's
+            cooling energy and (optionally) per-step element temps.
+
+            With cooling=None the update is bitwise the v2.0 path;
+            the cooling bookkeeping runs only when K_h is not None.
+            """
             T = T_start.copy()
+            E_loss_iv = 0.0
+            q_end = 0.0
+            Te_steps = []
             for _ in range(n_sub):
-                T = np.asarray(solve(R_sys @ T + h_step * F_Q)).ravel()
-            return T
+                if K_h is not None:
+                    q0 = float(ones_sub @ (K_h @ T - F_h))
+                if F_h is None:
+                    T = np.asarray(solve(R_sys @ T + h_step * F_Q)).ravel()
+                else:
+                    T = np.asarray(
+                        solve(R_sys @ T + h_step * (F_Q + F_h))).ravel()
+                if K_h is not None:
+                    q1 = float(ones_sub @ (K_h @ T - F_h))
+                    E_loss_iv += h_step * (theta * q1 + (1.0 - theta) * q0)
+                    q_end = q1
+                    if track_steps:
+                        Te_steps.append(elem_temps(T))
+            return T, E_loss_iv, q_end, Te_steps
 
         return advance
 
@@ -545,6 +657,7 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     T_elem_hist = [elem_temps(T)]
     history = []
     E_in = 0.0
+    E_loss = 0.0  # v2.2: accumulated convection loss [J] (0.0 adiabatic)
     enthalpy_gain_disc = 0.0  # v2.1: sum of ones^T C_iv dT_iv
     nu_warm = None
     a = v = em_info = None
@@ -576,7 +689,8 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
                 nu_init=nu_warm, **law_kwargs)
             nu_warm = em_info["nu_elem"]
             F_Q = _element_source_load(sub, em_info["Q_elem"][iron_idx])
-            T_new = advance_iv(T_start, F_Q, n_sub)
+            T_new, E_loss_iv, q_end, Te_steps = advance_iv(
+                T_start, F_Q, n_sub, track_steps=cp_varying)
             if T_trial is not None:
                 dT_stagger = float(np.max(np.abs(T_new - T_trial)))
             T_trial = T_new
@@ -587,6 +701,17 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         T = T_trial
         P_used = float(em_info["P"][-1])
         E_in += P_used * (n_sub * h_step)
+        E_loss += E_loss_iv
+        # v2.2 (R3): peak-engaged diagnostic -- True if any sampled
+        # (per-heat-step-end) element temperature falls inside the
+        # [t_curie - cp_peak_w, t_curie + cp_peak_w] window.  Form
+        # fixed; a pure diagnostic of the temperature sampling (the
+        # A4 gate consumes it only when the enthalpy peak is on).
+        peak_engaged = False
+        if Te_steps:
+            lo, hi = t_curie - cp_peak_w, t_curie + cp_peak_w
+            peak_engaged = any(
+                bool(np.any((Te >= lo) & (Te <= hi))) for Te in Te_steps)
         if cp_varying:
             # Discrete enthalpy increment of this interval:
             # ones^T C_iv (T_end - T_start) == P_iv * dt_iv exactly
@@ -608,6 +733,9 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
             "mu_r_iron_min": float(mu_iron.min()),
             "mu_r_iron": mu_iron.copy(),
             "Q_iron": em_info["Q_elem"][iron_idx].copy(),
+            "E_loss_iv": E_loss_iv,
+            "loss_rate_end": q_end,
+            "peak_engaged": peak_engaged,
         })
         times.append(times[-1] + n_sub * h_step)
         T_hist.append(T.copy())
@@ -627,13 +755,28 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
                                  cp_slope=cp_slope, cp_peak_h=cp_peak_h,
                                  cp_peak_w=cp_peak_w, t_curie=t_curie)
         enthalpy_gain_phys = float(ones_sub @ (C1 @ H_end))
-    balance_rel = (E_in - enthalpy_gain) / E_in if E_in > 0 else 0.0
+    # v2.2: three-party energy account E_in = ΔH_disc + E_loss.
+    # Adiabatic: E_loss is exactly 0.0, so the bitwise v2.0/v2.1
+    # balance_rel is preserved.  balance_cool is the pure-cooling
+    # (E_in = 0) metric, (E_in - ΔH - E_loss)/D with
+    # D = max(|ΔH|, E_loss); D = 0 is recorded as None ("not
+    # applicable"), never as a pass.
+    if E_in > 0.0:
+        balance_rel = (E_in - enthalpy_gain - E_loss) / E_in
+        balance_cool = None
+    else:
+        balance_rel = 0.0
+        _D = max(abs(enthalpy_gain), E_loss)
+        balance_cool = ((E_in - enthalpy_gain - E_loss) / _D
+                        if _D > 0.0 else None)
     return {"times": np.array(times), "T_hist": np.array(T_hist),
             "T_elem_hist": np.array(T_elem_hist), "history": history,
-            "E_in": E_in, "enthalpy_gain": enthalpy_gain,
+            "E_in": E_in, "E_loss": E_loss,
+            "enthalpy_gain": enthalpy_gain,
             "enthalpy_gain_phys": enthalpy_gain_phys,
             "cp_varying": bool(cp_varying),
-            "balance_rel": balance_rel, "submesh": sub,
+            "balance_rel": balance_rel, "balance_cool": balance_cool,
+            "submesh": sub,
             "iron_idx": iron_idx, "used_nodes": used_nodes,
             "iron_volumes": vols_sub, "a": a, "v": v,
             "em_info": em_info}

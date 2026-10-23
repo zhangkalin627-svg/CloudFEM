@@ -398,9 +398,6 @@ def test_a2_three_party_balance():
     _, r_cool = _a1_runs()
     print(f"[a2] balance_rel={r_cool['balance_rel']:.3e} "
           f"(simulation output)")
-    if _THR["a2_rel"] is None:
-        print("[a2] threshold not set: measurement only")
-        return
     assert abs(r_cool["balance_rel"]) <= _THR["a2_rel"], \
         "A2: three-party balance must close"
 
@@ -435,9 +432,6 @@ def test_a3_steady_state_balance():
                                        - hist[-2]["t_end"])
     print(f"[a3] P={last['P']:.6e} q_loss_end={last['loss_rate_end']:.6e} "
           f"rel={pq:.3e} dTmax/dt={dTdt:.3e} K/s (simulation outputs)")
-    if _THR["a3_pq"] is None or _THR["a3_dTdt"] is None:
-        print("[a3] thresholds not set: measurement only")
-        return
     assert pq <= _THR["a3_pq"], "A3: P must balance q_loss at plateau"
     assert dTdt <= _THR["a3_dTdt"], "A3: Tmax must stop moving"
 
@@ -504,13 +498,16 @@ def test_a4_cp_cooling_joint():
     """
     r_on, r_off = _a4_runs()
     for tag, r in (("peak-on", r_on), ("peak-off", r_off)):
-        print(f"[a4 {tag}] balance_rel={r['balance_rel']:.3e} "
+        # R-1: both A4 runs are pure cooling (J_s zero excitation,
+        # E_in == 0), where the driver hardcodes balance_rel = 0.0,
+        # so a balance_rel assertion would pass vacuously.  Use
+        # balance_cool instead (same assertion form as S3).
+        print(f"[a4 {tag}] balance_cool={r['balance_cool']:.3e} "
               f"(simulation output)")
-        if _THR["a4_rel"] is not None:
-            assert abs(r["balance_rel"]) <= _THR["a4_rel"], \
-                "A4: enthalpy-form balance must close"
-        else:
-            print(f"[a4 {tag}] threshold not set: measurement only")
+        assert r["balance_cool"] is not None, \
+            "A4: pure-cooling metric must be defined (D > 0)"
+        assert abs(r["balance_cool"]) <= _THR["a4_rel"], \
+            "A4: enthalpy-form balance must close"
     engaged = [h["peak_engaged"] for h in r_on["history"]]
     print(f"[a4] peak_engaged per interval (peak-on): {engaged}")
     assert any(engaged), \

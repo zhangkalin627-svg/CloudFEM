@@ -1,0 +1,932 @@
+{
+  "meta": {
+    "study": "v2.3 B stagger cloud matrix (A1-level, t_end=0.4, dt=0.02, em_every=5 -> 4 EM intervals, 19 configs)",
+    "code_base": "main@7f57cc7 (physics unchanged)",
+    "repo": "/data/home/v23_run",
+    "geometry": "iron cylinder R=15mm L=60mm, air box half=0.045, h=0.016; f=2kHz B_applied H0=1e6 A/m; T0=20C; cp(T) law default-off (constant rho_cp); adiabatic",
+    "numpy": "2.5.4",
+    "ran_at_utc": "2026-10-23T11:15:47.755577+00:00",
+    "unit": "all numbers are simulation outputs (仿真输出)"
+  },
+  "cases": [
+    {
+      "stagger_iter": 1,
+      "stagger_tol": null,
+      "n_intervals": 4,
+      "stagger_passes": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "stagger_dT": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "P_per_interval": [
+        468981.899003776,
+        471355.1137713363,
+        353102.2857129302,
+        146809.05176208523
+      ],
+      "em_picard_iters": [
+        40,
+        15,
+        34,
+        31
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 4,
+      "total_picard_iters": 120,
+      "Tmax_degC": 1499.6042471741948,
+      "E_in_J": 144024.83502501278,
+      "balance_rel": 2.0207508275693732e-16,
+      "wall_s": 2366.9161525210366,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": null,
+      "n_intervals": 4,
+      "stagger_passes": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "stagger_dT": [
+        68.71095029754224,
+        409.03986405859393,
+        331.1849726496424,
+        276.00650170735616
+      ],
+      "P_per_interval": [
+        471355.1137713363,
+        352707.38297567714,
+        148172.28767934896,
+        114425.84114014184
+      ],
+      "em_picard_iters": [
+        15,
+        35,
+        31,
+        24
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 8,
+      "total_picard_iters": 105,
+      "Tmax_degC": 1120.9256582724809,
+      "E_in_J": 108666.06255665043,
+      "balance_rel": 0.0,
+      "wall_s": 553.0186060869601,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.2525190160105798,
+      "rel_Ein_vs_iter1": -0.24550468995310146
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": null,
+      "n_intervals": 4,
+      "stagger_passes": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "stagger_dT": [
+        13.131200187330592,
+        205.86663522431957,
+        231.6157320433408,
+        69.31636457097522
+      ],
+      "P_per_interval": [
+        471397.2367749191,
+        422980.2614321398,
+        301103.80071994266,
+        133308.93390266533
+      ],
+      "em_picard_iters": [
+        2,
+        16,
+        29,
+        22
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 12,
+      "total_picard_iters": 69,
+      "Tmax_degC": 1396.0004497345208,
+      "E_in_J": 132879.0232829667,
+      "balance_rel": -4.3805003585489816e-16,
+      "wall_s": 205.10460322501604,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.06908742598915792,
+      "rel_Ein_vs_iter1": -0.07738812365319078
+    },
+    {
+      "stagger_iter": 4,
+      "stagger_tol": null,
+      "n_intervals": 4,
+      "stagger_passes": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "stagger_dT": [
+        2.558104415022626,
+        88.55150804190805,
+        225.25212723420736,
+        113.64688255524203
+      ],
+      "P_per_interval": [
+        471040.9604506393,
+        388357.15202903555,
+        176410.08921966766,
+        134843.50977350314
+      ],
+      "em_picard_iters": [
+        2,
+        11,
+        30,
+        28
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 16,
+      "total_picard_iters": 71,
+      "Tmax_degC": 1187.4390142809339,
+      "E_in_J": 117065.17114728458,
+      "balance_rel": 2.4861220610284644e-16,
+      "wall_s": 258.42677279701456,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.20816507654035718,
+      "rel_Ein_vs_iter1": -0.1871876046450331
+    },
+    {
+      "stagger_iter": 5,
+      "stagger_tol": null,
+      "n_intervals": 4,
+      "stagger_passes": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "stagger_dT": [
+        1.2315650596996761,
+        43.523808236213995,
+        194.93685807503675,
+        50.78618576011979
+      ],
+      "P_per_interval": [
+        470647.21295584145,
+        403214.77440496103,
+        295588.2832781975,
+        133227.2398455153
+      ],
+      "em_picard_iters": [
+        2,
+        8,
+        25,
+        16
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 20,
+      "total_picard_iters": 51,
+      "Tmax_degC": 1355.8337618701612,
+      "E_in_J": 130267.75104845154,
+      "balance_rel": 3.3512320074416057e-16,
+      "wall_s": 279.5966497240006,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.09587228468774346,
+      "rel_Ein_vs_iter1": -0.09551883169435366
+    },
+    {
+      "stagger_iter": 1,
+      "stagger_tol": 0.01,
+      "n_intervals": 4,
+      "stagger_passes": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "stagger_dT": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "P_per_interval": [
+        468981.899003776,
+        471355.1137713363,
+        353102.2857129302,
+        146809.05176208523
+      ],
+      "em_picard_iters": [
+        40,
+        15,
+        34,
+        31
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 4,
+      "total_picard_iters": 120,
+      "Tmax_degC": 1499.6042471741948,
+      "E_in_J": 144024.83502501278,
+      "balance_rel": 2.0207508275693732e-16,
+      "wall_s": 95.02831220603548,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 1,
+      "stagger_tol": 0.001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "stagger_dT": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "P_per_interval": [
+        468981.899003776,
+        471355.1137713363,
+        353102.2857129302,
+        146809.05176208523
+      ],
+      "em_picard_iters": [
+        40,
+        15,
+        34,
+        31
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 4,
+      "total_picard_iters": 120,
+      "Tmax_degC": 1499.6042471741948,
+      "E_in_J": 144024.83502501278,
+      "balance_rel": 2.0207508275693732e-16,
+      "wall_s": 94.41743591200793,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 1,
+      "stagger_tol": 0.0001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "stagger_dT": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "P_per_interval": [
+        468981.899003776,
+        471355.1137713363,
+        353102.2857129302,
+        146809.05176208523
+      ],
+      "em_picard_iters": [
+        40,
+        15,
+        34,
+        31
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 4,
+      "total_picard_iters": 120,
+      "Tmax_degC": 1499.6042471741948,
+      "E_in_J": 144024.83502501278,
+      "balance_rel": 2.0207508275693732e-16,
+      "wall_s": 93.8206340179895,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": 0.0,
+      "rel_Ein_vs_iter1": 0.0
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": 0.01,
+      "n_intervals": 4,
+      "stagger_passes": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "stagger_dT": [
+        68.71095029754224,
+        409.03986405859393,
+        331.1849726496424,
+        276.00650170735616
+      ],
+      "P_per_interval": [
+        471355.1137713363,
+        352707.38297567714,
+        148172.28767934896,
+        114425.84114014184
+      ],
+      "em_picard_iters": [
+        15,
+        35,
+        31,
+        24
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 8,
+      "total_picard_iters": 105,
+      "Tmax_degC": 1120.9256582724809,
+      "E_in_J": 108666.06255665043,
+      "balance_rel": 0.0,
+      "wall_s": 148.91152368404437,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.2525190160105798,
+      "rel_Ein_vs_iter1": -0.24550468995310146
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": 0.001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "stagger_dT": [
+        68.71095029754224,
+        409.03986405859393,
+        331.1849726496424,
+        276.00650170735616
+      ],
+      "P_per_interval": [
+        471355.1137713363,
+        352707.38297567714,
+        148172.28767934896,
+        114425.84114014184
+      ],
+      "em_picard_iters": [
+        15,
+        35,
+        31,
+        24
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 8,
+      "total_picard_iters": 105,
+      "Tmax_degC": 1120.9256582724809,
+      "E_in_J": 108666.06255665043,
+      "balance_rel": 0.0,
+      "wall_s": 149.37978443701286,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.2525190160105798,
+      "rel_Ein_vs_iter1": -0.24550468995310146
+    },
+    {
+      "stagger_iter": 2,
+      "stagger_tol": 0.0001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "stagger_dT": [
+        68.71095029754224,
+        409.03986405859393,
+        331.1849726496424,
+        276.00650170735616
+      ],
+      "P_per_interval": [
+        471355.1137713363,
+        352707.38297567714,
+        148172.28767934896,
+        114425.84114014184
+      ],
+      "em_picard_iters": [
+        15,
+        35,
+        31,
+        24
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 8,
+      "total_picard_iters": 105,
+      "Tmax_degC": 1120.9256582724809,
+      "E_in_J": 108666.06255665043,
+      "balance_rel": 0.0,
+      "wall_s": 149.50106030900497,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.2525190160105798,
+      "rel_Ein_vs_iter1": -0.24550468995310146
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": 0.01,
+      "n_intervals": 4,
+      "stagger_passes": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "stagger_dT": [
+        13.131200187330592,
+        205.86663522431957,
+        231.6157320433408,
+        69.31636457097522
+      ],
+      "P_per_interval": [
+        471397.2367749191,
+        422980.2614321398,
+        301103.80071994266,
+        133308.93390266533
+      ],
+      "em_picard_iters": [
+        2,
+        16,
+        29,
+        22
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 12,
+      "total_picard_iters": 69,
+      "Tmax_degC": 1396.0004497345208,
+      "E_in_J": 132879.0232829667,
+      "balance_rel": -4.3805003585489816e-16,
+      "wall_s": 203.79904017201625,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.06908742598915792,
+      "rel_Ein_vs_iter1": -0.07738812365319078
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": 0.001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "stagger_dT": [
+        13.131200187330592,
+        205.86663522431957,
+        231.6157320433408,
+        69.31636457097522
+      ],
+      "P_per_interval": [
+        471397.2367749191,
+        422980.2614321398,
+        301103.80071994266,
+        133308.93390266533
+      ],
+      "em_picard_iters": [
+        2,
+        16,
+        29,
+        22
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 12,
+      "total_picard_iters": 69,
+      "Tmax_degC": 1396.0004497345208,
+      "E_in_J": 132879.0232829667,
+      "balance_rel": -4.3805003585489816e-16,
+      "wall_s": 205.9535911050043,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.06908742598915792,
+      "rel_Ein_vs_iter1": -0.07738812365319078
+    },
+    {
+      "stagger_iter": 3,
+      "stagger_tol": 0.0001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "stagger_dT": [
+        13.131200187330592,
+        205.86663522431957,
+        231.6157320433408,
+        69.31636457097522
+      ],
+      "P_per_interval": [
+        471397.2367749191,
+        422980.2614321398,
+        301103.80071994266,
+        133308.93390266533
+      ],
+      "em_picard_iters": [
+        2,
+        16,
+        29,
+        22
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 12,
+      "total_picard_iters": 69,
+      "Tmax_degC": 1396.0004497345208,
+      "E_in_J": 132879.0232829667,
+      "balance_rel": -4.3805003585489816e-16,
+      "wall_s": 208.67734345095232,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.06908742598915792,
+      "rel_Ein_vs_iter1": -0.07738812365319078
+    },
+    {
+      "stagger_iter": 5,
+      "stagger_tol": 0.01,
+      "n_intervals": 4,
+      "stagger_passes": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "stagger_dT": [
+        1.2315650596996761,
+        43.523808236213995,
+        194.93685807503675,
+        50.78618576011979
+      ],
+      "P_per_interval": [
+        470647.21295584145,
+        403214.77440496103,
+        295588.2832781975,
+        133227.2398455153
+      ],
+      "em_picard_iters": [
+        2,
+        8,
+        25,
+        16
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 20,
+      "total_picard_iters": 51,
+      "Tmax_degC": 1355.8337618701612,
+      "E_in_J": 130267.75104845154,
+      "balance_rel": 3.3512320074416057e-16,
+      "wall_s": 283.14214532397455,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.09587228468774346,
+      "rel_Ein_vs_iter1": -0.09551883169435366
+    },
+    {
+      "stagger_iter": 5,
+      "stagger_tol": 0.001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "stagger_dT": [
+        1.2315650596996761,
+        43.523808236213995,
+        194.93685807503675,
+        50.78618576011979
+      ],
+      "P_per_interval": [
+        470647.21295584145,
+        403214.77440496103,
+        295588.2832781975,
+        133227.2398455153
+      ],
+      "em_picard_iters": [
+        2,
+        8,
+        25,
+        16
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 20,
+      "total_picard_iters": 51,
+      "Tmax_degC": 1355.8337618701612,
+      "E_in_J": 130267.75104845154,
+      "balance_rel": 3.3512320074416057e-16,
+      "wall_s": 279.0266190780094,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.09587228468774346,
+      "rel_Ein_vs_iter1": -0.09551883169435366
+    },
+    {
+      "stagger_iter": 5,
+      "stagger_tol": 0.0001,
+      "n_intervals": 4,
+      "stagger_passes": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "stagger_dT": [
+        1.2315650596996761,
+        43.523808236213995,
+        194.93685807503675,
+        50.78618576011979
+      ],
+      "P_per_interval": [
+        470647.21295584145,
+        403214.77440496103,
+        295588.2832781975,
+        133227.2398455153
+      ],
+      "em_picard_iters": [
+        2,
+        8,
+        25,
+        16
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 20,
+      "total_picard_iters": 51,
+      "Tmax_degC": 1355.8337618701612,
+      "E_in_J": 130267.75104845154,
+      "balance_rel": 3.3512320074416057e-16,
+      "wall_s": 278.5987892750418,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.09587228468774346,
+      "rel_Ein_vs_iter1": -0.09551883169435366
+    },
+    {
+      "stagger_iter": 5,
+      "stagger_tol": 0.1,
+      "n_intervals": 4,
+      "stagger_passes": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "stagger_dT": [
+        1.2315650596996761,
+        43.523808236213995,
+        194.93685807503675,
+        50.78618576011979
+      ],
+      "P_per_interval": [
+        470647.21295584145,
+        403214.77440496103,
+        295588.2832781975,
+        133227.2398455153
+      ],
+      "em_picard_iters": [
+        2,
+        8,
+        25,
+        16
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 20,
+      "total_picard_iters": 51,
+      "Tmax_degC": 1355.8337618701612,
+      "E_in_J": 130267.75104845154,
+      "balance_rel": 3.3512320074416057e-16,
+      "wall_s": 281.3699093289906,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.09587228468774346,
+      "rel_Ein_vs_iter1": -0.09551883169435366
+    },
+    {
+      "stagger_iter": 5,
+      "stagger_tol": 1.0,
+      "n_intervals": 4,
+      "stagger_passes": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "stagger_dT": [
+        1.2315650596996761,
+        43.523808236213995,
+        194.93685807503675,
+        50.78618576011979
+      ],
+      "P_per_interval": [
+        470647.21295584145,
+        403214.77440496103,
+        295588.2832781975,
+        133227.2398455153
+      ],
+      "em_picard_iters": [
+        2,
+        8,
+        25,
+        16
+      ],
+      "em_converged": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "total_em_solves": 20,
+      "total_picard_iters": 51,
+      "Tmax_degC": 1355.8337618701612,
+      "E_in_J": 130267.75104845154,
+      "balance_rel": 3.3512320074416057e-16,
+      "wall_s": 281.5921092259814,
+      "unit": "simulation outputs (仿真输出)",
+      "rel_Tmax_vs_iter1": -0.09587228468774346,
+      "rel_Ein_vs_iter1": -0.09551883169435366
+    }
+  ],
+  "contraction_cross_run": {
+    "interval_0": {
+      "3/2": {
+        "d_prev": 68.71095029754224,
+        "d_cur": 13.131200187330592,
+        "factor": 0.19110782386894581,
+        "contracts": true
+      },
+      "4/3": {
+        "d_prev": 13.131200187330592,
+        "d_cur": 2.558104415022626,
+        "factor": 0.19481116566106185,
+        "contracts": true
+      },
+      "5/4": {
+        "d_prev": 2.558104415022626,
+        "d_cur": 1.2315650596996761,
+        "factor": 0.48143658736806605,
+        "contracts": true
+      }
+    },
+    "interval_1": {
+      "3/2": {
+        "d_prev": 409.03986405859393,
+        "d_cur": 205.86663522431957,
+        "factor": 0.5032923519523508,
+        "contracts": true
+      },
+      "4/3": {
+        "d_prev": 205.86663522431957,
+        "d_cur": 88.55150804190805,
+        "factor": 0.4301401630498269,
+        "contracts": true
+      },
+      "5/4": {
+        "d_prev": 88.55150804190805,
+        "d_cur": 43.523808236213995,
+        "factor": 0.4915083796835604,
+        "contracts": true
+      }
+    },
+    "interval_2": {
+      "3/2": {
+        "d_prev": 331.1849726496424,
+        "d_cur": 231.6157320433408,
+        "factor": 0.6993545938703113,
+        "contracts": true
+      },
+      "4/3": {
+        "d_prev": 231.6157320433408,
+        "d_cur": 225.25212723420736,
+        "factor": 0.9725251615985107,
+        "contracts": true
+      },
+      "5/4": {
+        "d_prev": 225.25212723420736,
+        "d_cur": 194.93685807503675,
+        "factor": 0.8654162802749022,
+        "contracts": true
+      }
+    },
+    "interval_3": {
+      "3/2": {
+        "d_prev": 276.00650170735616,
+        "d_cur": 69.31636457097522,
+        "factor": 0.25114033235517724,
+        "contracts": true
+      },
+      "4/3": {
+        "d_prev": 69.31636457097522,
+        "d_cur": 113.64688255524203,
+        "factor": 1.6395389928286759,
+        "contracts": false
+      },
+      "5/4": {
+        "d_prev": 113.64688255524203,
+        "d_cur": 50.78618576011979,
+        "factor": 0.4468770688490588,
+        "contracts": true
+      }
+    }
+  }
+}
+

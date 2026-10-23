@@ -56,15 +56,13 @@ T_INF = 20.0
 _CACHE = {}
 
 # Thresholds (fixed from measured first-run values with margin;
-# see V22_IMPL_REPORT.md).  Do not change without re-review.
-# A1-A4 full-run thresholds are set at delivery time (before the
-# cloud acceptance run) from the first full-run measurements.
+# see V22_IMPL_REPORT.md).  Do not change without re-review
+# (butler condition b: any post-acceptance-run change needs re-review).
 _THR = {
     "s1_rel": 1e-12,     # bitwise degeneration
     "s2_rel": 1e-12,     # assembly gate
     "s3_rel": 1e-9,      # cross-path node temperatures
     "s4_rel": 1e-9,      # three-party balance
-    "a1": None,          # TBC at delivery (direction assertions only)
     "a2_rel": 1e-9,       # measured 9.973e-16; margin ~6 orders
     "a3_pq": 1e-2,        # measured 2.5e-3 at 60 s plateau; 4x margin
     "a3_dTdt": 1.0,        # measured 0.28 K/s; ~3.5x margin [K/s]

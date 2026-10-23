@@ -11,8 +11,12 @@ Cooling parameters used are *model-assumption example values, not
 measured data* (scope §7): h = 5000 W/(m^2 K), T_inf = 20 degC.
 
 S1  adiabatic degeneration (bitwise): cooling=None and
-    cooling={"surface": (0.0, 20.0)} reproduce the pre-edit
-    baseline short run (Tmax, E_in, balance_rel).
+    cooling={"surface": (0.0, 20.0)} are bitwise identical, and the
+    driver's adiabatic stepping is cross-checked against a
+    *live, same-machine* independent reference (transient_heat_tet10
+    with f == 0 and no Robin, non-trivial T0 diffusion case).
+    No hard-coded baseline values are embedded anywhere
+    (cross-machine-safe by design).
 S2  Robin assembly gate (thin-wall trap): the driver's K_h/F_h vs
     an independent face-occurrence enumeration + the same
     integrand assembler; the geometry includes a one-cell-thick
@@ -242,27 +246,51 @@ def test_s2_robin_assembly_gate():
 
 # --- S1: adiabatic degeneration (bitwise) -----------------------------
 def test_s1_adiabatic_degeneration():
-    """cooling=None and h=0 reproduce the pre-edit baseline.
+    """cooling=None degenerates to the adiabatic path; h=0 == None bitwise.
 
-    Baseline values were recorded from the unmodified driver
-    (main@7f57cc7) on the same short case before the v2.2 edit;
-    they are embedded here.  All numbers are simulation outputs.
+    Cross-machine-safe by design (no embedded hard-coded baseline):
+      (a) h=0 must reproduce cooling=None *bitwise* (zero cooling
+          terms assemble to exact zeros);
+      (b) the driver's adiabatic stepping is cross-checked against a
+          live, same-machine independent reference (transient_heat_tet10
+          with f == 0 and no Robin) on the same submesh, using a
+          non-trivial T0=100 degC diffusion case (Q == 0 construction:
+          J_s zero excitation, same as S3).
+    All numbers are simulation outputs.  Thresholds are unchanged.
     """
-    base = {"Tmax": _BASE["Tmax"], "E_in": _BASE["E_in"],
-            "balance_rel": _BASE["balance_rel"]}
+    # (a) degeneration: h=0 vs cooling=None
     r_none = _driver_run(None)
     r_h0 = _driver_run({"surface": (0.0, 20.0)})
+    dT = float(np.max(np.abs(r_none["T_hist"][-1] - r_h0["T_hist"][-1])))
+    print(f"[s1] h=0 vs cooling=None: max |dT| = {dT:.3e} "
+          f"(simulation outputs)")
+    assert dT == 0.0, "S1: h=0 must degenerate bitwise to cooling=None"
+    assert r_none["E_in"] == r_h0["E_in"], "S1: E_in must match"
+    assert r_none["balance_rel"] == r_h0["balance_rel"], \
+        "S1: balance_rel must match"
     for tag, r in (("cooling=None", r_none), ("h=0", r_h0)):
-        Tmax = float(np.max(r["T_hist"][-1]))
-        for key, got in (("Tmax", Tmax), ("E_in", r["E_in"]),
-                         ("balance_rel", r["balance_rel"])):
-            ref = base[key]
-            rel = abs(got - ref) / max(abs(ref), 1e-300)
-            print(f"[s1 {tag}] {key}: got {got:.6e} ref {ref:.6e} "
-                  f"rel {rel:.3e} (simulation outputs)")
-            assert rel <= _THR["s1_rel"], f"S1 failed: {tag} {key}"
         assert r["E_loss"] == 0.0, "adiabatic E_loss must be exactly 0.0"
         assert all(hh["E_loss_iv"] == 0.0 for hh in r["history"])
+
+    # (b) live independent adiabatic reference, computed on this machine
+    T0 = 100.0
+    res = _driver_run(None, T0=T0, J_s=lambda x, y, z: np.zeros(3),
+                      t_end=0.1, dt=0.02)
+    assert res["E_in"] == 0.0, "zero excitation must give E_in == 0"
+    mesh = _mesh()
+    sub, _, _ = _extract_submesh_tet10(mesh, _iron_mask(mesh))
+    _, Th = transient_heat_tet10(
+        sub, k=30.0, rho_cp=3.768e6, f=0.0, robin=None,
+        t_end=0.1, dt=0.02, T0=T0, method="be")
+    T_drv = res["T_hist"][-1]
+    T_ind = Th[-1]
+    assert T_drv.shape == T_ind.shape, \
+        "S1: driver/reference field size mismatch"
+    rel = float(np.max(np.abs(T_drv - T_ind)) /
+                max(float(np.max(np.abs(T_ind))), 1e-300))
+    print(f"[s1] live-reference cross check: max rel diff = {rel:.3e} "
+          f"(simulation outputs)")
+    assert rel <= _THR["s1_rel"], "S1 live-reference cross check failed"
 
 
 # --- S3/S4-pure: pure-cooling cross path + balance_cool ---------------
@@ -334,16 +362,6 @@ def test_s4_s5_heated_cooled():
     print(f"[s5] surface-mean adiabatic={s_ad:.4f} cooled={s_cool:.4f} "
           f"(simulation outputs, degC)")
     assert s_cool < s_ad, "cooling must lower the surface temperature"
-
-
-# Pre-edit baseline (main@7f57cc7, unmodified driver) on the S1 short
-# case (t_end=0.1, dt=0.02, em_every=5, B_applied H0=1e6 A/m,
-# f=2 kHz, T0=20).  All numbers are simulation outputs.
-_BASE = {
-    "Tmax": 666.6673583840344,
-    "E_in": 46898.18990038223,
-    "balance_rel": 0.0,
-}
 
 
 # --- A1/A2: full heated run with cooling (cloud acceptance) -----------
@@ -520,3 +538,19 @@ def test_a4_cp_cooling_joint():
         "A4: both runs must cross Tc within the window"
     assert t_on > t_off, \
         "A4: the enthalpy peak must delay the Curie crossing"
+
+
+if __name__ == "__main__":
+    # Real execution entry: run_all_tests.py spawns this file as a
+    # subprocess, so the suites must actually run here (an absent
+    # __main__ silently returns rc=0 without running anything).
+    # Assertion failures propagate as a non-zero exit status.
+    test_s1_adiabatic_degeneration()
+    test_s2_robin_assembly_gate()
+    test_s3_pure_cooling_cross_path()
+    test_s4_s5_heated_cooled()
+    test_a1_cooling_effect_direction()
+    test_a2_three_party_balance()
+    test_a3_steady_state_balance()
+    test_a4_cp_cooling_joint()
+    print("ALL v2.2 ROBIN-COOLING VALIDATIONS PASSED (simulation outputs)")

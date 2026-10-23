@@ -1,9 +1,12 @@
 # V23_STAGGER_REPORT.md —— B stagger 判据研究报告（v2.3）
 
 > 口径：本报告全部数值为仿真输出（管家 InstaBox rw-ci 云端跑得，非实测）。
-> 研究基线：分支 `v2.3-stagger-study`，提交 `0ddd70e`；云端全矩阵 19 组，
-> 2026-10-23 17:28–19:17（总 wall 约 1.9h），rc+逐份日志双查：无 Traceback/Error；
-> EM 全部收敛；balance_rel ≤ 4.4e-16。
+> 云端验收跑数据 commit 为 `ddf258d`（管家推送，含 19 组数据+运行日志），
+> 研究基线提交为 `0ddd70e`（分支 v2.3-stagger-study）。
+> 另：balance_rel 是求解器内部能量对账口径（内部账目自洽），不是物理精度证明，
+> 不能误读为物理验证依据。
+> 云端全矩阵 19 组，2026-10-23 17:28–19:17（总 wall 约 1.9h），rc+逐份日志双查：无 Traceback/Error；
+> EM 全部收敛；balance_rel ≤ 4.4e-16（对账口径）。
 > 判定所用准则为 `studies/v23_stagger/CLOUD_CRITERIA.md`（云端开跑前已冻结，
 > 本报告不得自行改准则；出数后如调整阈值须重新送审）。
 

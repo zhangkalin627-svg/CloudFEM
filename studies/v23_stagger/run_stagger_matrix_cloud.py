@@ -9,13 +9,18 @@ A1 级算例：t_end=0.4, dt=0.02, em_every=5 → 4 个 EM 区间。
 f=2kHz，B_applied 驱动 H0=1e6 A/m，T0=20°C，cp(T) 律默认关闭=常 rho_cp，
 绝热驱动），以便轻/云对比。
 
-矩阵：stagger_iter ∈ {1,2,3,5} × stagger_tol ∈ {None, 1e-2, 1e-3, 1e-4 K}
-= 16 组。
+矩阵：19 组（管家 2026-10-23 复核修订）=
+收缩档 iter∈{1,2,3,4,5}×tol=None（5 组；iter=4 仅取 d4）
++ tol 扫掠档 iter∈{1,2,3,5}×tol∈{1e-2,1e-3,1e-4} K（12 组）
++ 假设档 iter=5×tol∈{0.1,1.0} K（2 组；0.1–1K 预注册假设验证档，
+只放在上限最大的 iter=5 档）。
 
 记录（全部为仿真输出）：
 - 每区间 stagger_passes / stagger_dT（驱动 history 原样）→ 收缩曲线 R1
+  （判据用相邻档比值 d(k+1)/d(k)，k∈{2,3,4}；见 CLOUD_CRITERIA.md §1）
 - Tmax/E_in 相对 iter=1 基线的变化、EM 求解次数倍乘、wall 时间
-- tol 提前跳出是否发生（passes < stagger_iter 时）
+- tol 提前跳出是否发生（passes < stagger_iter 时；推荐判据见
+  CLOUD_CRITERIA.md §2，基于 iter=5 档）
 
 输出：JSON 到 studies/v23_stagger/data/stagger_cloud_matrix.json。
 重跑说明：同 seed/同环境重跑，收缩曲线一致（scope §6）。
@@ -43,8 +48,18 @@ PI = np.pi
 GEO = dict(R=0.015, L=0.06, HALF=0.045, H=0.016, FREQ=2000.0)
 CASE = dict(t_end=0.4, dt=0.02, em_every=5, T0=20.0)   # 4 EM intervals
 
-_ITERS = (1, 2, 3, 5)
-_TOLS = (None, 1e-2, 1e-3, 1e-4)
+# 19 组（管家 2026-10-23 复核修订）：
+# - 收缩档：iter∈{1,2,3,4,5} × tol=None（5 组；iter=4 仅为取 d4，
+#   使相邻档比值 d(k+1)/d(k) 可算；驱动 history.stagger_dT 为标量，
+#   每区间只存末次 pass 差，d4 在原 {1,2,3,5} 矩阵下拿不到）
+# - tol 扫掠档：iter∈{1,2,3,5} × tol∈{1e-2,1e-3,1e-4}（12 组）
+# - 假设档：iter=5 × tol∈{0.1,1.0} K（2 组；0.1–1K 预注册假设的验证档，
+#   只放在上限最大的 iter=5 档——tol 提前跳出只有在上限够大时才有鉴别力）
+_CONFIGS = (
+    [(it, None) for it in (1, 2, 3, 4, 5)]
+    + [(it, tol) for it in (1, 2, 3, 5) for tol in (1e-2, 1e-3, 1e-4)]
+    + [(5, 0.1), (5, 1.0)]
+)
 
 _CACHE = {}
 
@@ -96,9 +111,8 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     cases = []
     n = 0
-    total = len(_ITERS) * len(_TOLS)
-    for it in _ITERS:
-        for tol in _TOLS:
+    total = len(_CONFIGS)
+    for it, tol in _CONFIGS:
             n += 1
             print(f"[{n}/{total}] stagger_iter={it} stagger_tol={tol} ...",
                   flush=True)
@@ -115,12 +129,16 @@ def main():
         c["rel_Tmax_vs_iter1"] = (c["Tmax_degC"] - T0b) / abs(T0b)
         c["rel_Ein_vs_iter1"] = (c["E_in_J"] - E0b) / abs(E0b)
 
-    # 收缩分析：逐区间跨跑比值 d(iter=k+1)/d(iter=k)（tol=None 档）
+    # 收缩分析：相邻档比值 d(k+1)/d(k)（tol=None 档；d1 无定义，从 k=2 起）。
+    # 注意：这是跨运行比值，前提是跨运行嵌套确定性
+    # （同一起点、同档内前 k 个 pass 在不同 iter 上限运行中逐位一致）。
+    # 驱动 history.stagger_dT 为标量（每区间只存末次 pass 差），该前提无法从
+    # 现有记录直接验证；轻算例 iter=2/3 终场 Tmax 差 0.02°C 说明不同上限运行的
+    # 终场量本就不同，跨档比值含此漂移，判据只取 factor<1 的定性方向。
     contraction = {}
-    iters_sorted = sorted(_ITERS)
     for idx in range(base["n_intervals"]):
         per = {}
-        for a, b in zip(iters_sorted, iters_sorted[1:]):
+        for a, b in ((2, 3), (3, 4), (4, 5)):
             try:
                 da = next(c for c in cases
                           if c["stagger_iter"] == a
@@ -141,7 +159,7 @@ def main():
     payload = {
         "meta": {
             "study": "v2.3 B stagger cloud matrix (A1-level, t_end=0.4, "
-                     "dt=0.02, em_every=5 -> 4 EM intervals)",
+                     "dt=0.02, em_every=5 -> 4 EM intervals, 19 configs)",
             "code_base": "main@7f57cc7 (physics unchanged)",
             "repo": REPO,
             "geometry": "iron cylinder R=15mm L=60mm, air box half=0.045, "

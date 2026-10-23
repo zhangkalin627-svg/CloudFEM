@@ -65,9 +65,9 @@ _THR = {
     "s3_rel": 1e-9,      # cross-path node temperatures
     "s4_rel": 1e-9,      # three-party balance
     "a1": None,          # TBC at delivery (direction assertions only)
-    "a2_rel": None,      # TBC at delivery
-    "a3_pq": None,       # TBC at delivery
-    "a3_dTdt": None,     # TBC at delivery
+    "a2_rel": 1e-9,       # measured 9.973e-16; margin ~6 orders
+    "a3_pq": 1e-2,        # measured 2.5e-3 at 60 s plateau; 4x margin
+    "a3_dTdt": 1.0,        # measured 0.28 K/s; ~3.5x margin [K/s]
     "a4_rel": 1e-9,       # measured 0.0 (enthalpy form closes); margin ~9 orders
 }
 
@@ -415,20 +415,21 @@ def test_a3_steady_state_balance():
     plateau the interval power P must match the interval-end
     loss rate q_loss, and Tmax must stop moving.  Sizing: thermal
     time constant tau = rho_c*V/(h*A) ~ 4.5 s for the iron
-    cylinder at h = 5000 (model-assumption example value);
-    t_end = 20 s (~4.4 tau) with dt = 0.1 s and em_every = 30
-    (7 EM intervals) keeps the local run affordable; the cloud
-    acceptance run uses the same parameters.
+    cylinder at h = 5000 (model-assumption example value), but
+    Bi ~ 1 (internal gradients) and the T-dependent P slow the
+    approach; t_end = 60 s with dt = 0.1 s and em_every = 30
+    (20 EM intervals) reaches pq = 2.5e-3 and dTmax/dt = 0.28 K/s
+    locally.  The cloud acceptance run uses the same parameters.
     """
     mesh = _mesh()
     omega = 2 * PI * GEO["FREQ"]
     res = induction_heating_3d_tet10(
         mesh, omega, B_applied=(0.0, 0.0, MU0 * 1.2e5), iron=_in_iron,
-        T0=20.0, t_end=20.0, dt=0.1, em_every=30,
+        T0=20.0, t_end=60.0, dt=0.1, em_every=30,
         em_tol=1e-3, em_max_iter=60, em_relax=0.5,
         cooling={"surface": (H_COOL, T_INF)})
     hist = res["history"]
-    assert len(hist) == 7, "20 s / 3 s intervals = 7 records"
+    assert len(hist) == 20, "60 s / 3 s intervals = 20 records"
     last = hist[-1]
     pq = abs(last["P"] - last["loss_rate_end"]) / max(last["P"], 1e-300)
     Tmax = [float(np.max(T)) for T in res["T_hist"]]

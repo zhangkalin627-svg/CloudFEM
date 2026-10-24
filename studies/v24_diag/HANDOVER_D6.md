@@ -7,8 +7,10 @@
 
 ## 1. 本次提交
 
-- 提交号：代码与验证提交见下（本文档提交随后推送；远端以
-  `git ls-remote origin v2.4-diag` 复核值为准，交卷信附实测 hash）
+- 代码与验证提交：**db03f82**（驱动诊断实现 + 新增测试 + D1/D2
+  验证脚本与结果 diag_verify.json + 本底稿初稿）
+- 本底稿提交随后推送；远端以 `git ls-remote origin v2.4-diag`
+  复核值为准，交卷信附实测 hash。
 - 内容：
   - `cloudfem/physics/induction3d_tet10.py`：驱动新增默认关闭的诊断
     开关 `diag`（仅追加记录，不动任何求解数值路径；签名仅在末尾

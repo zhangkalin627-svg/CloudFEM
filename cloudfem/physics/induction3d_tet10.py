@@ -412,7 +412,7 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
                                stagger_tol=None, em_tol=1e-3,
                                em_max_iter=50, em_relax=0.5,
                                gauge_eps=1e-6, permc_spec=None,
-                               **law_kwargs):
+                               diag=False, **law_kwargs):
     """Staggered EM -> thermal induction heating of a steel workpiece.
 
     Drives :func:`solve_eddy_current_nonlinear_tet10_T` and Tet10
@@ -445,13 +445,30 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
     method : heat time integration, "be" (default) or "cn".
     stagger_iter, stagger_tol : fixed-point passes per EM interval
         (module docstring); 1 = pure loosely-coupled update.
+    diag : v2.4 diagnostic switch (default False = off).  When True,
+        each per-interval history record additionally carries
+        ``stagger_dT_seq`` (list of per-pass dT in pass order;
+        length = actual passes, the first pass entry is None
+        "missing" -- never 0-filled), ``frac_above_Tc_vol`` (volume
+        fraction of iron elements with T > t_curie at the interval-end
+        temperature field) and ``mu_r_agg`` (min / volume-weighted
+        mean / max of the secant mu_r used by that interval's last
+        EM pass, sampled at that pass's input temperature field).
+        The pre-existing ``frac_above_Tc`` key is the element-count
+        fraction and is kept unchanged; the volume-fraction
+        diagnostic uses the distinct key ``frac_above_Tc_vol`` so
+        the two conventions never mix.  Diagnostic recording is
+        read-only observation: no solver array is written by the
+        diagnostic path, so diag on/off does not alter any
+        computed number (D1 criterion).
 
     Returns a dict with ``times`` / ``T_hist`` (workpiece nodal
     temperatures at the EM interval ends, T_hist[0] at t = 0),
     ``T_elem_hist`` (per-iron-element temperatures, same times),
     ``history`` (per-interval records: t_end, P, em_iterations,
     em_converged, stagger_passes, T_elem_mean/max, frac_above_Tc,
-    mu_r_iron_mean/min), ``E_in`` / ``enthalpy_gain`` /
+    mu_r_iron_mean/min; plus stagger_dT_seq, frac_above_Tc_vol,
+    mu_r_agg when diag=True), ``E_in`` / ``enthalpy_gain`` /
     ``balance_rel`` (energy account; with cp(T) enabled the
     account is the discrete enthalpy form sum_iv ones^T C_iv
     dT_iv, and ``enthalpy_gain_phys`` carries the analytic
@@ -565,6 +582,7 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
         T_est = T_start.copy()
         T_trial = None
         dT_stagger = None
+        dT_seq = []  # v2.4 diag: per-pass dT record (read-only)
         for s in range(stagger_iter):
             T_elem = np.full(mesh.n_elements, float(T0))
             T_elem[iron_idx] = elem_temps(T_est)
@@ -579,6 +597,10 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
             T_new = advance_iv(T_start, F_Q, n_sub)
             if T_trial is not None:
                 dT_stagger = float(np.max(np.abs(T_new - T_trial)))
+            if diag:
+                # First pass has no predecessor: record an explicit
+                # missing marker (None), never a 0 fill.
+                dT_seq.append(None if T_trial is None else dT_stagger)
             T_trial = T_new
             T_est = T_trial
             if (stagger_tol is not None and dT_stagger is not None
@@ -594,7 +616,7 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
             enthalpy_gain_disc += float(ones_sub @ (C_iv @ (T - T_start)))
         Te = elem_temps(T)
         mu_iron = em_info["mu_r_elem"][iron_idx]
-        history.append({
+        rec = {
             "t_end": times[-1] + n_sub * h_step,
             "P": P_used,
             "em_iterations": em_info["iterations"],
@@ -608,7 +630,26 @@ def induction_heating_3d_tet10(mesh, omega, B_applied=None, J_s=None,
             "mu_r_iron_min": float(mu_iron.min()),
             "mu_r_iron": mu_iron.copy(),
             "Q_iron": em_info["Q_elem"][iron_idx].copy(),
-        })
+        }
+        if diag:
+            # v2.4 diagnostic records (read-only observation only;
+            # nothing here writes back into solver state).  Sampling
+            # points per CLOUD_CRITERIA.md section 0: mu_r_agg is
+            # taken from the last pass's EM solve (i.e. at that
+            # pass's INPUT temperature field T_est), while
+            # frac_above_Tc_vol is taken from the interval-END
+            # temperature field (the last pass's output) -- adjacent
+            # in time but different states; record side by side,
+            # never assert a time-ordered causal link.
+            mur = np.asarray(mu_iron, dtype=float)
+            vol_total = float(np.sum(vols_sub))
+            vw_mean = float(np.sum(mur * vols_sub) / vol_total)
+            rec["stagger_dT_seq"] = list(dT_seq)
+            rec["frac_above_Tc_vol"] = float(
+                np.sum(vols_sub[Te > t_curie]) / vol_total)
+            rec["mu_r_agg"] = (float(mur.min()), vw_mean,
+                               float(mur.max()))
+        history.append(rec)
         times.append(times[-1] + n_sub * h_step)
         T_hist.append(T.copy())
         T_elem_hist.append(Te.copy())

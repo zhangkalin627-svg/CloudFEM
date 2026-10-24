@@ -1,0 +1,800 @@
+{
+  "meta": {
+    "study": "v2.4 diag phase-2 D1/D2 verification (S4-level, local smoke)",
+    "threshold": 1e-12,
+    "balance_rel_threshold": 4.4e-16,
+    "unit": "all numbers are simulation outputs (\u4eff\u771f\u8f93\u51fa); wall times are local-machine measurements (\u672c\u673a\u5b9e\u6d4b)",
+    "total_wall_s": 6158.676107173,
+    "execution_note": "run in per-iter chunks via the same run_case/compare_base/check_d2 code as run_diag_verify.py (VM reboot resilience); results identical in format"
+  },
+  "results": {
+    "d1a": [
+      {
+        "label": "iter=1 diag-off vs main",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 666.6673583840344,
+            "b": 666.6673583840344
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 46898.18990038223,
+            "b": 46898.18990038223
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 0.0,
+            "b": 0.0
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": true
+        }
+      },
+      {
+        "label": "iter=2 diag-off vs main",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 611.0684600367338,
+            "b": 611.0684600367338
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47135.51137714268,
+            "b": 47135.51137714268
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 0.0,
+            "b": 0.0
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": true
+        }
+      },
+      {
+        "label": "iter=3 diag-off vs main",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 611.0876082709482,
+            "b": 611.0876082709482
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47139.72367748408,
+            "b": 47139.72367748408
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 6.173950160559579e-16,
+            "b": 6.173950160559579e-16
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": false
+        }
+      },
+      {
+        "label": "iter=4 diag-off vs main",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 609.5927114148527,
+            "b": 609.5927114148527
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47104.09604506646,
+            "b": 47104.09604506646
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 7.723274858328895e-16,
+            "b": 7.723274858328895e-16
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": false
+        }
+      },
+      {
+        "label": "iter=5 diag-off vs main",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 609.1611444146985,
+            "b": 609.1611444146985
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47064.72129558686,
+            "b": 47064.72129558686
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 1.5459472432625823e-16,
+            "b": 1.5459472432625823e-16
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": true
+        }
+      }
+    ],
+    "d1b": [
+      {
+        "label": "iter=1 diag-on vs diag-off",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 666.6673583840344,
+            "b": 666.6673583840344
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 46898.18990038223,
+            "b": 46898.18990038223
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 0.0,
+            "b": 0.0
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": true
+        }
+      },
+      {
+        "label": "iter=2 diag-on vs diag-off",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 611.0684600367338,
+            "b": 611.0684600367338
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47135.51137714268,
+            "b": 47135.51137714268
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 0.0,
+            "b": 0.0
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": true
+        }
+      },
+      {
+        "label": "iter=3 diag-on vs diag-off",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 611.0876082709482,
+            "b": 611.0876082709482
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47139.72367748408,
+            "b": 47139.72367748408
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 6.173950160559579e-16,
+            "b": 6.173950160559579e-16
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": false
+        }
+      },
+      {
+        "label": "iter=4 diag-on vs diag-off",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 609.5927114148527,
+            "b": 609.5927114148527
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47104.09604506646,
+            "b": 47104.09604506646
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 7.723274858328895e-16,
+            "b": 7.723274858328895e-16
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": false
+        }
+      },
+      {
+        "label": "iter=5 diag-on vs diag-off",
+        "ok": true,
+        "max_rel_diff": 0.0,
+        "details": {
+          "Tmax": {
+            "rel_diff": 0.0,
+            "a": 609.1611444146985,
+            "b": 609.1611444146985
+          },
+          "E_in": {
+            "rel_diff": 0.0,
+            "a": 47064.72129558686,
+            "b": 47064.72129558686
+          },
+          "balance_rel": {
+            "rel_diff": 0.0,
+            "a": 1.5459472432625823e-16,
+            "b": 1.5459472432625823e-16
+          },
+          "history.P": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_mean": {
+            "rel_diff": 0.0
+          },
+          "history.T_elem_max": {
+            "rel_diff": 0.0
+          },
+          "history.frac_above_Tc": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_mean": {
+            "rel_diff": 0.0
+          },
+          "history.mu_r_iron_min": {
+            "rel_diff": 0.0
+          },
+          "history.t_end": {
+            "rel_diff": 0.0
+          },
+          "history.em_iterations": {
+            "equal": true
+          },
+          "history.em_converged": {
+            "equal": true
+          },
+          "history.stagger_passes": {
+            "equal": true
+          },
+          "history.mu_r_iron": {
+            "bitwise_equal": true
+          },
+          "history.Q_iron": {
+            "bitwise_equal": true
+          },
+          "T_hist": {
+            "bitwise_equal": true
+          },
+          "balance_rel_magnitude_ok": true
+        }
+      }
+    ],
+    "d2": [
+      {
+        "label": "iter=1",
+        "ok": true,
+        "checks": {
+          "has_keys": true,
+          "seq_len_eq_passes": true,
+          "seq_first_missing": true,
+          "seq_last_eq_scalar": true,
+          "seq_rest_floats": true,
+          "frac_vol_in_01": true,
+          "mu_r_agg_ordered": true,
+          "legacy_count_frac_key_intact": true
+        },
+        "seq": [
+          null
+        ],
+        "frac_above_Tc_vol": 0.0,
+        "mu_r_agg": [
+          3.3186502256954777,
+          107.54478985889565,
+          200.58839888959983
+        ],
+        "stagger_passes": 1,
+        "stagger_dT": null
+      },
+      {
+        "label": "iter=2",
+        "ok": true,
+        "checks": {
+          "has_keys": true,
+          "seq_len_eq_passes": true,
+          "seq_first_missing": true,
+          "seq_last_eq_scalar": true,
+          "seq_rest_floats": true,
+          "frac_vol_in_01": true,
+          "mu_r_agg_ordered": true,
+          "legacy_count_frac_key_intact": true
+        },
+        "seq": [
+          null,
+          68.71095030151321
+        ],
+        "frac_above_Tc_vol": 0.0,
+        "mu_r_agg": [
+          3.2530035412727116,
+          101.90283141380908,
+          200.62580749783172
+        ],
+        "stagger_passes": 2,
+        "stagger_dT": 68.71095030151321
+      },
+      {
+        "label": "iter=3",
+        "ok": true,
+        "checks": {
+          "has_keys": true,
+          "seq_len_eq_passes": true,
+          "seq_first_missing": true,
+          "seq_last_eq_scalar": true,
+          "seq_rest_floats": true,
+          "frac_vol_in_01": true,
+          "mu_r_agg_ordered": true,
+          "legacy_count_frac_key_intact": true
+        },
+        "seq": [
+          null,
+          68.71095030151321,
+          13.131200188426988
+        ],
+        "frac_above_Tc_vol": 0.0,
+        "mu_r_agg": [
+          3.2521005171433472,
+          101.7158226349266,
+          200.62535568324893
+        ],
+        "stagger_passes": 3,
+        "stagger_dT": 13.131200188426988
+      },
+      {
+        "label": "iter=4",
+        "ok": true,
+        "checks": {
+          "has_keys": true,
+          "seq_len_eq_passes": true,
+          "seq_first_missing": true,
+          "seq_last_eq_scalar": true,
+          "seq_rest_floats": true,
+          "frac_vol_in_01": true,
+          "mu_r_agg_ordered": true,
+          "legacy_count_frac_key_intact": true
+        },
+        "seq": [
+          null,
+          68.71095030151321,
+          13.131200188426988,
+          2.5581044140451468
+        ],
+        "frac_above_Tc_vol": 0.0,
+        "mu_r_agg": [
+          3.251216590223263,
+          101.54475953497109,
+          200.62551912720608
+        ],
+        "stagger_passes": 4,
+        "stagger_dT": 2.5581044140451468
+      },
+      {
+        "label": "iter=5",
+        "ok": true,
+        "checks": {
+          "has_keys": true,
+          "seq_len_eq_passes": true,
+          "seq_first_missing": true,
+          "seq_last_eq_scalar": true,
+          "seq_rest_floats": true,
+          "frac_vol_in_01": true,
+          "mu_r_agg_ordered": true,
+          "legacy_count_frac_key_intact": true
+        },
+        "seq": [
+          null,
+          68.71095030151321,
+          13.131200188426988,
+          2.5581044140451468,
+          1.2315650594623548
+        ],
+        "frac_above_Tc_vol": 0.0,
+        "mu_r_agg": [
+          3.2504774638763294,
+          101.39026751548265,
+          200.62599777916563
+        ],
+        "stagger_passes": 5,
+        "stagger_dT": 1.2315650594623548
+      },
+      {
+        "label": "early-break(iter=5,tol=1e6)",
+        "ok": true,
+        "checks": {
+          "has_keys": true,
+          "seq_len_eq_passes": true,
+          "seq_first_missing": true,
+          "seq_last_eq_scalar": true,
+          "seq_rest_floats": true,
+          "frac_vol_in_01": true,
+          "mu_r_agg_ordered": true,
+          "legacy_count_frac_key_intact": true
+        },
+        "seq": [
+          null,
+          68.71095030151321
+        ],
+        "frac_above_Tc_vol": 0.0,
+        "mu_r_agg": [
+          3.2530035412727116,
+          101.90283141380908,
+          200.62580749783172
+        ],
+        "stagger_passes": 2,
+        "stagger_dT": 68.71095030151321
+      }
+    ]
+  },
+  "all_ok": true
+}

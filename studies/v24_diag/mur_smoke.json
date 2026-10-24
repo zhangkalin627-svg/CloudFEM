@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "study": "v2.4 diag phase-1: secant mu_r availability smoke (S4-level)",
+    "code_base": "main@7f57cc7 (branch v2.4-diag cut from origin/main); physics code NOT modified",
+    "repo": "/home/hatch/workspace/cloudfem_v20",
+    "geometry": "iron cylinder R=15mm L=60mm, air box half=0.045, h=0.016; f=2kHz B_applied H0=1e6 A/m; T0=20C; cp(T) law default-off; adiabatic",
+    "numpy": "1.26.4",
+    "ran_at_utc": "2026-10-24T00:44:14.191236+00:00",
+    "unit": "all numbers are simulation outputs (仿真输出); wall times are local-machine measurements (本机实测)"
+  },
+  "checks": {
+    "history_has_mu_r_iron": true,
+    "history_has_mu_r_iron_mean": true,
+    "history_has_mu_r_iron_min": true,
+    "history_has_frac_above_Tc": true,
+    "history_has_Q_iron": true,
+    "history_has_stagger_passes": true,
+    "history_has_stagger_dT": true,
+    "mu_r_iron_is_ndarray": true,
+    "mu_r_iron_len": 122,
+    "iron_idx_len": 122,
+    "vols_len": 122,
+    "mu_iron_vs_em_info_maxabsdiff": 0.0,
+    "mu_iron_bitwise_equal_em_info": true,
+    "mu_r_agg_min": 3.2521005171433472,
+    "mu_r_agg_volwmean": 101.7158226349266,
+    "mu_r_agg_max": 200.62535568324893,
+    "mu_r_agg_countmean_vs_volwmean": [
+      95.76167528791288,
+      101.7158226349266
+    ],
+    "order_ok": true,
+    "frac_above_Tc_history_countfrac": 0.0,
+    "frac_count_matches_history": true,
+    "frac_above_Tc_volfrac": 0.0,
+    "Tmax_degC": 611.0876082709482,
+    "iter1_mu_r_volwmean": 107.54478985889565,
+    "iter3_mu_r_volwmean": 101.7158226349266,
+    "mur_differs_between_iter1_and_iter3": true,
+    "wall_s_iter3": 320.781223983,
+    "wall_s_iter1": 226.7538595029996
+  }
+}

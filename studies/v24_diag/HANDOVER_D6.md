@@ -56,7 +56,7 @@ D4 只许三态措辞（数据支持 / 数据不支持 / 数据不足以判定�
 ## 3. 云端一键运行入口（建议）
 
 ```sh
-git checkout v2.4-diag   # 应到 __COMMIT__
+git checkout v2.4-diag   # 应到 b647c15
 # 新增测试 + 全回归（逐文件运行，rc=0 为过）
 for f in tests/test_*.py; do python3 "$f" || echo "FAIL $f"; done
 # D1/D2 冒烟验证（S4 级，含 main@7f57cc7 临时基线 worktree，自动清理）
